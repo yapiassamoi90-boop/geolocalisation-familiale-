@@ -1,0 +1,12 @@
+/* Design 100% clair, lumineux et épuré */
+body {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  margin: 0;
+  padding: 0;
+}
+
+#map {
+  height: calc(100vh - 118px);
+  width: 100%;
+}
