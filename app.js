@@ -7,6 +7,7 @@ const authScreen = document.getElementById('auth-screen');
 const appScreen = document.getElementById('app-screen');
 const authForm = document.getElementById('auth-form');
 const usernameInput = document.getElementById('username');
+const submitBtn = authForm.querySelector('button[type="submit"]') || authForm.querySelector('button');
 const myIdSpan = document.getElementById('my-id');
 const userBadge = document.getElementById('user-badge');
 const statusDot = document.getElementById('status-dot');
@@ -42,32 +43,69 @@ authForm.addEventListener('submit', async (e) => {
   const name = usernameInput.value.trim();
   if (!name) return;
 
-  const { data, error } = await supabase
-    .from('family_users')
-    .insert([{ name: name, latitude: 0, longitude: 0 }])
-    .select().single();
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Connexion GPS en cours...";
+  }
 
-  if (error) return alert("Erreur d'enregistrement : " + error.message);
+  // Vérification de la géolocalisation avant d'insérer dans Supabase
+  if (!navigator.geolocation) {
+    alert("La géolocalisation n'est pas supportée par votre appareil.");
+    resetSubmitButton();
+    return;
+  }
 
-  myUserId = data.id;
-  myUserName = data.name;
-  localStorage.setItem('family_user_id', myUserId);
-  localStorage.setItem('family_user_name', myUserName);
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const battery = await obtenirBatterie();
 
-  lancerApplication(myUserId);
+      const { data, error } = await supabase
+        .from('family_users')
+        .insert([{ name: name, latitude: lat, longitude: lng, battery_level: battery }])
+        .select().single();
+
+      if (error) {
+        alert("Erreur d'enregistrement : " + error.message);
+        resetSubmitButton();
+        return;
+      }
+
+      myUserId = data.id;
+      myUserName = data.name;
+      localStorage.setItem('family_user_id', myUserId);
+      localStorage.setItem('family_user_name', myUserName);
+
+      lancerApplication(myUserId);
+    },
+    (err) => {
+      alert("Impossible d'obtenir la position GPS. Veuillez autoriser la localisation. (" + err.message + ")");
+      resetSubmitButton();
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
 });
+
+function resetSubmitButton() {
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Obtenir mon ID & Démarrer";
+  }
+}
 
 function lancerApplication(userId) {
   authScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
-  userBadge.classList.remove('hidden');
-  myIdSpan.textContent = userId;
+  if (userBadge) userBadge.classList.remove('hidden');
+  if (myIdSpan) myIdSpan.textContent = userId;
 
   initialiserCarte();
   demarrerBaliseGPSAutomatique(userId);
 }
 
 function initialiserCarte() {
+  if (map) return;
   map = L.map('map').setView([5.3600, -4.0083], 13); // Abidjan par défaut
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
@@ -77,8 +115,12 @@ function initialiserCarte() {
 // Récupération de la batterie
 async function obtenirBatterie() {
   if ('getBattery' in navigator) {
-    const battery = await navigator.getBattery();
-    return Math.round(battery.level * 100);
+    try {
+      const battery = await navigator.getBattery();
+      return Math.round(battery.level * 100);
+    } catch (e) {
+      return null;
+    }
   }
   return null;
 }
@@ -86,7 +128,7 @@ async function obtenirBatterie() {
 // Balise GPS automatique en arrière-plan
 function demarrerBaliseGPSAutomatique(userId) {
   if (!("geolocation" in navigator)) {
-    statusText.textContent = "❌ GPS non supporté par l'appareil";
+    if (statusText) statusText.textContent = "❌ GPS non supporté par l'appareil";
     return;
   }
 
@@ -96,9 +138,9 @@ function demarrerBaliseGPSAutomatique(userId) {
       const lng = pos.coords.longitude;
       const battery = await obtenirBatterie();
 
-      statusDot.className = "w-3 h-3 rounded-full bg-green-500";
-      statusText.textContent = "🟢 Balise active (GPS connecté)";
-      if (battery !== null) batteryText.textContent = `🔋 ${battery}%`;
+      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-green-500";
+      if (statusText) statusText.textContent = "🟢 Balise active (GPS connecté)";
+      if (batteryText && battery !== null) batteryText.textContent = `🔋 ${battery}%`;
 
       await supabase
         .from('family_users')
@@ -111,8 +153,8 @@ function demarrerBaliseGPSAutomatique(userId) {
         .eq('id', userId);
     },
     (err) => {
-      statusDot.className = "w-3 h-3 rounded-full bg-red-500";
-      statusText.textContent = "⚠️ Signal GPS coupé ou indisponible";
+      if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-red-500";
+      if (statusText) statusText.textContent = "⚠️ Signal GPS coupé ou indisponible";
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
@@ -120,7 +162,10 @@ function demarrerBaliseGPSAutomatique(userId) {
 
 // Observer un ami en entrant son ID
 async function observerAmi() {
-  const targetId = document.getElementById('target-id').value.trim();
+  const targetIdInput = document.getElementById('target-id');
+  if (!targetIdInput) return;
+  
+  const targetId = targetIdInput.value.trim();
   if (!targetId) return alert("Veuillez saisir un ID valide");
 
   if (activeSubscription) supabase.removeChannel(activeSubscription);
