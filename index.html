@@ -3,60 +3,246 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Famille Localizer - Dev.Assamoi</title>
-  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="style.css">
-  <style>#map{height:72vh;width:100%}</style>
+  <meta name="description" content="Famille Localizer - partage volontaire de position GPS entre proches.">
+
+  <title>Famille Localizer - Dev.Assamoi</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <link rel="stylesheet" href="./style.css">
 </head>
-<body class="font-sans antialiased bg-gray-50">
 
-  <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
-    <h1 class="text-lg font-bold">📍 Famille Localizer</h1>
-    <span id="user-badge" class="bg-blue-700 text-xs px-3 py-1 rounded-full hidden font-medium shadow-sm">
-      Mon ID : <span id="my-id">--</span>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="./">
+    <span class="brand-mark">⌖</span>
+    <span>
+      <strong>Famille Localizer</strong>
+      <small>Dev.Assamoi</small>
     </span>
-  </header>
+  </a>
 
-  <!-- Écran 1 : Inscription -->
-  <div id="auth-screen" class="max-w-md mx-auto mt-12 p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
-    <h2 class="text-xl font-bold mb-2 text-gray-800">Rejoindre le réseau</h2>
-    <p class="text-xs text-gray-500 mb-6">Entrez votre prénom. Un ID unique vous sera attribué.</p>
-    
-    <form id="auth-form" class="space-y-4" novalidate>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1">PRÉNOM / NOM</label>
-        <input type="text" id="username" placeholder="Ex: Jean Assamoi" autocomplete="off" 
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition text-sm">
-      </div>
-      <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-md">
-        Obtenir mon ID & Démarrer
+  <span id="user-badge" class="user-badge hidden">
+    Mon ID : <strong id="my-id">—</strong>
+  </span>
+</header>
+
+<main class="page">
+
+  <section class="hero">
+    <span class="eyebrow">RESTER EN LIEN, EN TOUTE CONFIANCE</span>
+
+    <h1>La famille, <span>plus proche.</span></h1>
+
+    <p>
+      Partage ta position uniquement lorsque tu le décides.
+      Tu gardes le contrôle à tout moment.
+    </p>
+  </section>
+
+  <!-- INSCRIPTION -->
+  <section id="auth-screen" class="panel auth-panel">
+
+    <div class="section-icon">👋</div>
+
+    <h2>Bienvenue !</h2>
+
+    <p class="muted">
+      Inscris ton prénom pour obtenir ton identifiant familial.
+    </p>
+
+    <form id="auth-form" class="stack">
+
+      <label for="username">Ton nom ou prénom</label>
+
+      <input
+        id="username"
+        name="username"
+        type="text"
+        minlength="2"
+        maxlength="60"
+        placeholder="Ex. Assamoi"
+        autocomplete="name"
+        required
+      >
+
+      <button id="register-button" class="button primary" type="submit">
+        Obtenir mon ID et démarrer
       </button>
+
     </form>
-  </div>
 
-  <!-- Écran 2 : App -->
-  <div id="app-screen" class="hidden">
-    <div class="p-3 bg-white shadow-sm flex gap-2 border-b">
-      <input type="number" id="target-id" placeholder="ID du membre (ex: 2)" 
-        class="flex-1 px-4 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-      <button type="button" onclick="observerAmi()" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700">Localiser</button>
+    <div id="js-status" class="notice info" role="status">
+      Chargement de l'application…
     </div>
-    <div id="map"></div>
-    <div class="p-3 bg-white border-t flex justify-between items-center text-xs">
-      <div class="flex items-center gap-2">
-        <span id="status-dot" class="w-3 h-3 rounded-full bg-gray-400"></span>
-        <span id="status-text" class="font-medium text-gray-700">GPS en attente...</span>
+
+    <div id="auth-message" class="notice hidden" role="status"></div>
+
+  </section>
+
+  <!-- APPLICATION -->
+  <section id="app-screen" class="hidden">
+
+    <div class="panel welcome-panel">
+
+      <div>
+        <span class="eyebrow">TON ESPACE FAMILIAL</span>
+        <h2>Bonjour !</h2>
+
+        <p class="muted">
+          Ton identifiant permet à tes proches de rechercher ta position
+          lorsque tu la partages.
+        </p>
       </div>
-      <span id="battery-text" class="text-gray-500 font-semibold"></span>
-    </div>
-  </div>
 
-  <!-- ORDRE CORRECT : Supabase -> Leaflet -> App -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js"></script>
+      <button id="logout-button" class="button light small" type="button">
+        Changer de session
+      </button>
+
+    </div>
+
+    <div class="grid-panels">
+
+      <!-- PARTAGE GPS -->
+      <section class="panel">
+
+        <div class="panel-heading">
+
+          <span class="section-icon">📡</span>
+
+          <div>
+            <h2>Mon partage GPS</h2>
+            <p class="muted">Désactivé par défaut</p>
+          </div>
+
+        </div>
+
+        <div class="gps-status">
+
+          <span id="status-dot" class="status-dot"></span>
+
+          <span id="status-text">
+            GPS désactivé
+          </span>
+
+        </div>
+
+        <div class="button-row">
+
+          <button
+            id="start-sharing-button"
+            class="button primary"
+            type="button"
+          >
+            Activer le partage GPS
+          </button>
+
+          <button
+            id="stop-sharing-button"
+            class="button danger-outline"
+            type="button"
+          >
+            Arrêter
+          </button>
+
+        </div>
+
+        <p class="hint">
+          Le navigateur demandera l'autorisation d'accéder à ta position.
+          Tu peux arrêter le partage à tout moment.
+        </p>
+
+        <div id="location-message" class="notice hidden" role="status"></div>
+
+        <p id="battery-text" class="battery"></p>
+
+      </section>
+
+      <!-- RECHERCHE D'UN PROCHE -->
+      <section class="panel">
+
+        <div class="panel-heading">
+
+          <span class="section-icon">👨‍👩‍👧‍👦</span>
+
+          <div>
+            <h2>Localiser un proche</h2>
+            <p class="muted">Avec son identifiant familial</p>
+          </div>
+
+        </div>
+
+        <form id="search-form" class="stack">
+
+          <label for="target-id">
+            Identifiant du proche
+          </label>
+
+          <input
+            id="target-id"
+            name="target-id"
+            type="text"
+            inputmode="numeric"
+            placeholder="Entre son identifiant"
+            autocomplete="off"
+            required
+          >
+
+          <button id="locate-button" class="button secondary" type="submit">
+            📍 Localiser
+          </button>
+
+        </form>
+
+        <p class="hint">
+          Tu ne verras sa position que s'il a activé volontairement
+          son partage GPS.
+        </p>
+
+      </section>
+
+    </div>
+
+    <!-- CARTE -->
+    <section class="panel map-panel">
+
+      <div class="map-title">
+
+        <div>
+          <span class="eyebrow">CARTE FAMILIALE</span>
+          <h2>Positions partagées</h2>
+        </div>
+
+        <span class="map-chip">OpenStreetMap</span>
+
+      </div>
+
+      <div id="map" aria-label="Carte des positions partagées"></div>
+
+    </section>
+
+    <p class="footer-note">
+      Famille Localizer · Le partage de position doit toujours rester
+      volontaire et consenti.
+    </p>
+
+  </section>
+
+</main>
+
+<!-- Bibliothèques -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="./app.js" defer></script>
+
 </body>
 </html>
