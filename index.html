@@ -31,6 +31,12 @@
   <div id="auth-screen" class="max-w-md mx-auto mt-12 p-6 bg-white rounded-2xl shadow-xl border border-gray-100">
     <h2 class="text-xl font-bold mb-2 text-gray-800">Rejoindre le réseau</h2>
     <p class="text-xs text-gray-500 mb-6">Entrez votre prénom ou nom. Un identifiant unique (1, 2, 3...) vous sera attribué automatiquement.</p>
+    
+    <!-- Indicateur de chargement JavaScript -->
+    <div id="js-status" class="mb-4 text-xs font-semibold text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+      ⏳ Chargement du script en cours...
+    </div>
+
     <form id="auth-form" class="space-y-4">
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1">PRÉNOM / NOM</label>
@@ -49,7 +55,7 @@
     <div class="p-3 bg-white shadow-sm flex gap-2 border-b border-gray-200">
       <input type="number" id="target-id" placeholder="Entrez l'ID du membre (ex: 2)" 
         class="flex-1 px-4 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
-      <button onclick="observerAmi()" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm">
+      <button type="button" onclick="observerAmi()" class="bg-blue-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition shadow-sm">
         Localiser
       </button>
     </div>
