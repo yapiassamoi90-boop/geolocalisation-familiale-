@@ -1,248 +1,287 @@
-<!DOCTYPE html>
-<html lang="fr">
+<!DOCTYPE html><html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2563eb">
-  <meta name="description" content="Famille Localizer - partage volontaire de position GPS entre proches.">
+  <meta name="theme-color" content="#f5f8ff">
+  <meta name="description" content="Famille GPS - Partage volontaire et sécurisé de position entre proches.">
+  <title>Famille GPS – Dev.Assamoi</title>  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  <script src="app.js" defer></script></head><body>  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">📍</div>
+      <div>
+        <h1>Famille GPS</h1>
+        <p>Dev.Assamoi</p>
+      </div>
+    </div><button id="logoutBtn" class="btn btn-outline hidden" type="button">
+  Déconnexion
+</button>
 
-  <title>Famille Localizer - Dev.Assamoi</title>
+  </header>  <main class="container"><!-- PAGE AUTHENTIFICATION -->
+<section id="authSection" class="auth-section">
 
-  <link rel="manifest" href="./manifest.json">
-  <link rel="icon" href="./icon-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="./icon-192.png">
-
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
-  <link rel="stylesheet" href="./style.css">
-</head>
-
-<body>
-
-<header class="topbar">
-  <a class="brand" href="./">
-    <span class="brand-mark">⌖</span>
-    <span>
-      <strong>Famille Localizer</strong>
-      <small>Dev.Assamoi</small>
-    </span>
-  </a>
-
-  <span id="user-badge" class="user-badge hidden">
-    Mon ID : <strong id="my-id">—</strong>
-  </span>
-</header>
-
-<main class="page">
-
-  <section class="hero">
-    <span class="eyebrow">RESTER EN LIEN, EN TOUTE CONFIANCE</span>
-
-    <h1>La famille, <span>plus proche.</span></h1>
-
+  <div class="welcome">
+    <span class="welcome-icon">🌍</span>
+    <h2>Restez proches, où que vous soyez.</h2>
     <p>
-      Partage ta position uniquement lorsque tu le décides.
-      Tu gardes le contrôle à tout moment.
+      Retrouvez vos proches grâce à leur numéro GPS,
+      uniquement lorsqu'ils autorisent le partage de leur position.
     </p>
-  </section>
+  </div>
 
-  <!-- INSCRIPTION -->
-  <section id="auth-screen" class="panel auth-panel">
+  <div class="auth-card">
 
-    <div class="section-icon">👋</div>
+    <div class="auth-tabs">
+      <button id="showLoginBtn" class="tab active" type="button">
+        Connexion
+      </button>
 
-    <h2>Bienvenue !</h2>
+      <button id="showRegisterBtn" class="tab" type="button">
+        Inscription
+      </button>
+    </div>
 
-    <p class="muted">
-      Inscris ton prénom pour obtenir ton identifiant familial.
-    </p>
+    <!-- INSCRIPTION -->
+    <form id="registerForm" class="hidden">
 
-    <form id="auth-form" class="stack">
+      <h2>Créer un compte</h2>
 
-      <label for="username">Ton nom ou prénom</label>
-
+      <label for="registerName">Nom complet</label>
       <input
-        id="username"
-        name="username"
+        id="registerName"
         type="text"
-        minlength="2"
-        maxlength="60"
-        placeholder="Ex. Assamoi"
+        placeholder="Exemple : Assamoi Yapi"
         autocomplete="name"
         required
       >
 
-      <button id="register-button" class="button primary" type="submit">
-        Obtenir mon ID et démarrer
+      <label for="registerEmail">Adresse e-mail</label>
+      <input
+        id="registerEmail"
+        type="email"
+        placeholder="exemple@email.com"
+        autocomplete="email"
+        required
+      >
+
+      <label for="registerPassword">Mot de passe</label>
+      <input
+        id="registerPassword"
+        type="password"
+        placeholder="Minimum 8 caractères"
+        autocomplete="new-password"
+        minlength="8"
+        required
+      >
+
+      <button class="btn btn-primary full-width" type="submit">
+        Créer mon compte
+      </button>
+
+      <p class="form-note">
+        Ton numéro GPS personnel sera attribué automatiquement
+        après la création du compte.
+      </p>
+    </form>
+
+    <!-- CONNEXION -->
+    <form id="loginForm">
+
+      <h2>Bienvenue !</h2>
+
+      <label for="loginEmail">Adresse e-mail</label>
+      <input
+        id="loginEmail"
+        type="email"
+        placeholder="Ton adresse e-mail"
+        autocomplete="email"
+        required
+      >
+
+      <label for="loginPassword">Mot de passe</label>
+      <input
+        id="loginPassword"
+        type="password"
+        placeholder="Ton mot de passe"
+        autocomplete="current-password"
+        required
+      >
+
+      <button class="btn btn-primary full-width" type="submit">
+        Se connecter
+      </button>
+
+      <p class="form-note">
+        Tu dois posséder un compte pour utiliser Famille GPS.
+      </p>
+    </form>
+
+  </div>
+</section>
+
+<!-- APPLICATION PRINCIPALE -->
+<section id="appSection" class="hidden">
+
+  <div class="dashboard-header">
+    <div>
+      <p class="eyebrow">TABLEAU DE BORD</p>
+      <h2>Bonjour, <span id="userName">Utilisateur</span> 👋</h2>
+      <p>Bienvenue dans ton espace Famille GPS.</p>
+    </div>
+  </div>
+
+  <!-- IDENTIFIANT GPS -->
+  <div class="profile-card">
+
+    <div>
+      <p class="card-label">MON NUMÉRO GPS PERSONNEL</p>
+      <div class="gps-number" id="myGpsId">---</div>
+      <p class="small-text">
+        Communique ce numéro uniquement aux personnes de confiance.
+      </p>
+    </div>
+
+    <button id="copyIdBtn" class="btn btn-copy" type="button">
+      Copier
+    </button>
+
+  </div>
+
+  <!-- PARTAGE GPS -->
+  <div class="section-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>📡 Mon partage de position</h3>
+        <p>Tu gardes le contrôle de ta localisation.</p>
+      </div>
+
+      <span id="sharingStatus" class="status-badge status-off">
+        Désactivé
+      </span>
+    </div>
+
+    <div class="sharing-controls">
+
+      <button
+        id="startSharingBtn"
+        class="btn btn-success"
+        type="button"
+      >
+        Activer mon GPS
+      </button>
+
+      <button
+        id="stopSharingBtn"
+        class="btn btn-danger"
+        type="button"
+      >
+        Arrêter le partage
+      </button>
+
+    </div>
+
+    <div class="location-info">
+      <p>📍 Position : <strong id="myLocation">Non disponible</strong></p>
+      <p>🔋 Batterie : <strong id="myBattery">Non disponible</strong></p>
+      <p>🕒 Dernière mise à jour : <strong id="myUpdatedAt">---</strong></p>
+    </div>
+
+    <p class="privacy-note">
+      Lorsque tu désactives le partage, ta position enregistrée
+      n'est plus accessible aux autres membres.
+    </p>
+
+  </div>
+
+  <!-- RECHERCHE PAR NUMERO -->
+  <div class="section-card">
+
+    <div class="section-heading">
+      <div>
+        <h3>🔎 Retrouver un proche</h3>
+        <p>Entre le numéro GPS de la personne recherchée.</p>
+      </div>
+    </div>
+
+    <form id="searchForm" class="search-form">
+
+      <input
+        id="searchGpsId"
+        type="number"
+        min="1"
+        step="1"
+        placeholder="Exemple : 12"
+        required
+      >
+
+      <button class="btn btn-primary" type="submit">
+        Rechercher
       </button>
 
     </form>
 
-    <div id="js-status" class="notice info" role="status">
-      Chargement de l'application…
-    </div>
+    <div id="searchResult" class="search-result hidden"></div>
 
-    <div id="auth-message" class="notice hidden" role="status"></div>
+  </div>
 
-  </section>
+  <!-- CARTE -->
+  <div class="section-card map-card">
 
-  <!-- APPLICATION -->
-  <section id="app-screen" class="hidden">
-
-    <div class="panel welcome-panel">
-
+    <div class="section-heading">
       <div>
-        <span class="eyebrow">TON ESPACE FAMILIAL</span>
-        <h2>Bonjour !</h2>
-
-        <p class="muted">
-          Ton identifiant permet à tes proches de rechercher ta position
-          lorsque tu la partages.
-        </p>
+        <h3>🗺️ Carte familiale</h3>
+        <p>Visualise les positions partagées avec toi.</p>
       </div>
+    </div>
 
-      <button id="logout-button" class="button light small" type="button">
-        Changer de session
-      </button>
+    <div class="map-legend">
+
+      <span>
+        <i class="legend-dot red"></i>
+        Position disponible
+      </span>
+
+      <span>
+        <i class="legend-dot blue"></i>
+        Membre sélectionné
+      </span>
+
+      <span>
+        <i class="legend-dot green"></i>
+        Hors partage
+      </span>
 
     </div>
 
-    <div class="grid-panels">
+    <div id="map"></div>
 
-      <!-- PARTAGE GPS -->
-      <section class="panel">
-
-        <div class="panel-heading">
-
-          <span class="section-icon">📡</span>
-
-          <div>
-            <h2>Mon partage GPS</h2>
-            <p class="muted">Désactivé par défaut</p>
-          </div>
-
-        </div>
-
-        <div class="gps-status">
-
-          <span id="status-dot" class="status-dot"></span>
-
-          <span id="status-text">
-            GPS désactivé
-          </span>
-
-        </div>
-
-        <div class="button-row">
-
-          <button
-            id="start-sharing-button"
-            class="button primary"
-            type="button"
-          >
-            Activer le partage GPS
-          </button>
-
-          <button
-            id="stop-sharing-button"
-            class="button danger-outline"
-            type="button"
-          >
-            Arrêter
-          </button>
-
-        </div>
-
-        <p class="hint">
-          Le navigateur demandera l'autorisation d'accéder à ta position.
-          Tu peux arrêter le partage à tout moment.
-        </p>
-
-        <div id="location-message" class="notice hidden" role="status"></div>
-
-        <p id="battery-text" class="battery"></p>
-
-      </section>
-
-      <!-- RECHERCHE D'UN PROCHE -->
-      <section class="panel">
-
-        <div class="panel-heading">
-
-          <span class="section-icon">👨‍👩‍👧‍👦</span>
-
-          <div>
-            <h2>Localiser un proche</h2>
-            <p class="muted">Avec son identifiant familial</p>
-          </div>
-
-        </div>
-
-        <form id="search-form" class="stack">
-
-          <label for="target-id">
-            Identifiant du proche
-          </label>
-
-          <input
-            id="target-id"
-            name="target-id"
-            type="text"
-            inputmode="numeric"
-            placeholder="Entre son identifiant"
-            autocomplete="off"
-            required
-          >
-
-          <button id="locate-button" class="button secondary" type="submit">
-            📍 Localiser
-          </button>
-
-        </form>
-
-        <p class="hint">
-          Tu ne verras sa position que s'il a activé volontairement
-          son partage GPS.
-        </p>
-
-      </section>
-
-    </div>
-
-    <!-- CARTE -->
-    <section class="panel map-panel">
-
-      <div class="map-title">
-
-        <div>
-          <span class="eyebrow">CARTE FAMILIALE</span>
-          <h2>Positions partagées</h2>
-        </div>
-
-        <span class="map-chip">OpenStreetMap</span>
-
-      </div>
-
-      <div id="map" aria-label="Carte des positions partagées"></div>
-
-    </section>
-
-    <p class="footer-note">
-      Famille Localizer · Le partage de position doit toujours rester
-      volontaire et consenti.
+    <p class="map-note">
+      La carte affiche uniquement les positions autorisées.
     </p>
 
-  </section>
+  </div>
 
-</main>
+  <!-- SECURITE -->
+  <div class="section-card security-card">
+    <h3>🔐 Confidentialité et sécurité</h3>
+    <ul>
+      <li>Le partage de position est volontaire.</li>
+      <li>Chaque utilisateur possède son propre numéro GPS.</li>
+      <li>La recherche nécessite de connaître le numéro du membre.</li>
+      <li>Tu peux arrêter le partage à tout moment.</li>
+      <li>Les coordonnées ne doivent jamais être accessibles lorsque le partage est désactivé.</li>
+    </ul>
+  </div>
 
-<!-- Bibliothèques -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</section>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div id="messageBox" class="message-box hidden" role="status"></div>
 
-<script src="./app.js" defer></script>
-
-</body>
+  </main>  <footer>
+    <p>Famille GPS © 2026 – Développé par Assamoi Yapi Hyppolite</p>
+    <p>La proximité en toute confiance ❤️</p>
+  </footer></body>
 </html>
