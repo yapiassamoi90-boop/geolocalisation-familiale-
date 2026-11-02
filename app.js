@@ -14,7 +14,7 @@ const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const batteryText = document.getElementById('battery-text');
 
-let map;
+let map = null;
 let markers = {};
 let activeSubscription = null;
 let myUserId = localStorage.getItem('family_user_id');
@@ -37,7 +37,7 @@ function enregistrerServiceWorker() {
   }
 }
 
-// Inscription et attribution automatique de l'ID (1, 2, 3...)
+// Inscription sécurisée et instantanée
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = usernameInput.value.trim();
@@ -45,46 +45,29 @@ authForm.addEventListener('submit', async (e) => {
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Connexion GPS en cours...";
+    submitBtn.textContent = "Inscription en cours...";
   }
 
-  // Vérification de la géolocalisation avant d'insérer dans Supabase
-  if (!navigator.geolocation) {
-    alert("La géolocalisation n'est pas supportée par votre appareil.");
+  // 1. Insertion directe dans Supabase avec des coordonnées par défaut (Abidjan)
+  // pour éviter tout blocage lié au GPS du téléphone au premier clic.
+  const { data, error } = await supabase
+    .from('family_users')
+    .insert([{ name: name, latitude: 5.3600, longitude: -4.0083, battery_level: 100 }])
+    .select().single();
+
+  if (error) {
+    alert("Erreur d'enregistrement : " + error.message);
     resetSubmitButton();
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const battery = await obtenirBatterie();
+  myUserId = data.id;
+  myUserName = data.name;
+  localStorage.setItem('family_user_id', myUserId);
+  localStorage.setItem('family_user_name', myUserName);
 
-      const { data, error } = await supabase
-        .from('family_users')
-        .insert([{ name: name, latitude: lat, longitude: lng, battery_level: battery }])
-        .select().single();
-
-      if (error) {
-        alert("Erreur d'enregistrement : " + error.message);
-        resetSubmitButton();
-        return;
-      }
-
-      myUserId = data.id;
-      myUserName = data.name;
-      localStorage.setItem('family_user_id', myUserId);
-      localStorage.setItem('family_user_name', myUserName);
-
-      lancerApplication(myUserId);
-    },
-    (err) => {
-      alert("Impossible d'obtenir la position GPS. Veuillez autoriser la localisation. (" + err.message + ")");
-      resetSubmitButton();
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
+  // 2. Basculement immédiat de l'écran
+  lancerApplication(myUserId);
 });
 
 function resetSubmitButton() {
@@ -100,13 +83,22 @@ function lancerApplication(userId) {
   if (userBadge) userBadge.classList.remove('hidden');
   if (myIdSpan) myIdSpan.textContent = userId;
 
-  initialiserCarte();
-  demarrerBaliseGPSAutomatique(userId);
+  // Petit délai pour laisser le DOM afficher l'écran de la carte avant d'initialiser Leaflet
+  setTimeout(() => {
+    initialiserCarte();
+    demarrerBaliseGPSAutomatique(userId);
+  }, 100);
 }
 
 function initialiserCarte() {
   if (map) return;
-  map = L.map('map').setView([5.3600, -4.0083], 13); // Abidjan par défaut
+  // S'assure que la div map a bien une hauteur visible
+  const mapDiv = document.getElementById('map');
+  if (mapDiv && mapDiv.clientHeight === 0) {
+    mapDiv.style.height = '70vh';
+  }
+
+  map = L.map('map').setView([5.3600, -4.0083], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
@@ -141,6 +133,17 @@ function demarrerBaliseGPSAutomatique(userId) {
       if (statusDot) statusDot.className = "w-3 h-3 rounded-full bg-green-500";
       if (statusText) statusText.textContent = "🟢 Balise active (GPS connecté)";
       if (batteryText && battery !== null) batteryText.textContent = `🔋 ${battery}%`;
+
+      // Met à jour la position réelle sur la carte si elle est initialisée
+      if (map) {
+        const latLng = [lat, lng];
+        if (markers['me']) {
+          markers['me'].setLatLng(latLng);
+        } else {
+          markers['me'] = L.marker(latLng).addTo(map).bindPopup("<b>Moi</b><br>Ma position GPS").openPopup();
+          map.setView(latLng, 15);
+        }
+      }
 
       await supabase
         .from('family_users')
@@ -193,7 +196,6 @@ async function observerAmi() {
     .subscribe();
 }
 
-// Calcul du statut Actif / Inactif selon l'horodatage
 function calculerStatut(updatedAt) {
   if (!updatedAt) return { label: 'Inconnu', color: '#6b7280' };
 
