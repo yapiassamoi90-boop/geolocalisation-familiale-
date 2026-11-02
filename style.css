@@ -1,422 +1,241 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
-
-:root {
-  --blue: #2563eb;
-  --blue-dark: #1d4ed8;
-  --cyan: #06b6d4;
-  --ink: #172554;
-  --muted: #64748b;
-  --line: #e2e8f0;
-  --surface: #ffffff;
-  --bg: #f2f7ff;
-  --green: #16a34a;
-  font-family: 'DM Sans', Arial, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  color: var(--ink);
-  background:
-    radial-gradient(circle at 10% 5%, #dbeafe 0, transparent 32%),
-    radial-gradient(circle at 95% 25%, #cffafe 0, transparent 28%),
-    var(--bg);
-}
-
-button,
-input {
-  font: inherit;
-}
-
-.topbar {
-  min-height: 76px;
-  padding: 14px max(5vw, 20px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: rgba(255,255,255,.9);
-  border-bottom: 1px solid #e7eef9;
-  backdrop-filter: blur(12px);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.brand-mark {
-  width: 43px;
-  height: 43px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  color: white;
-  font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--blue), var(--cyan));
-  box-shadow: 0 7px 18px #2563eb35;
-}
-
-.brand strong {
-  display: block;
-  font: 800 16px Manrope, sans-serif;
-}
-
-.brand small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: .08em;
-}
-
-.user-badge {
-  padding: 9px 13px;
-  border-radius: 999px;
-  color: #1e40af;
-  background: #eff6ff;
-  font-size: 12px;
-}
-
-.page {
-  width: min(1050px, 92%);
-  margin: 0 auto;
-  padding: 35px 0 55px;
-}
-
-.hero {
-  text-align: center;
-  max-width: 670px;
-  margin: 5px auto 28px;
-}
-
-.eyebrow {
-  color: var(--blue);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .16em;
-}
-
-.hero h1 {
-  margin: 9px 0;
-  font: 800 clamp(30px, 5vw, 46px) Manrope, sans-serif;
-  letter-spacing: -.04em;
-}
-
-.hero h1 span {
-  color: var(--blue);
-}
-
-.hero p {
-  color: var(--muted);
-  line-height: 1.65;
-  margin: 0 auto;
-  max-width: 560px;
-}
-
-.panel {
-  background: rgba(255,255,255,.97);
-  border: 1px solid #e5edf8;
-  border-radius: 22px;
-  padding: 23px;
-  box-shadow: 0 12px 35px rgba(30,64,175,.07);
-  margin-bottom: 18px;
-}
-
-.auth-panel {
-  max-width: 470px;
-  margin: 0 auto;
-}
-
-.section-icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: #eff6ff;
-  font-size: 20px;
-}
-
-h2 {
-  font: 800 19px Manrope, sans-serif;
-  margin: 10px 0 5px;
-}
-
-p {
-  line-height: 1.55;
-}
-
-.muted,
-.hint {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.stack {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #334155;
-}
-
-input {
-  width: 100%;
-  padding: 14px 15px;
-  border: 1px solid #dbe5f2;
-  border-radius: 12px;
-  color: var(--ink);
-  background: #fbfdff;
-  outline: none;
-  transition: .2s;
-}
-
-input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px #dbeafe;
-}
-
-.button {
-  border: 0;
-  border-radius: 12px;
-  padding: 13px 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform .15s, opacity .15s;
-  min-height: 46px;
-}
-
-.button:hover {
-  transform: translateY(-1px);
-}
-
-.button:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.primary {
-  color: white;
-  background: linear-gradient(110deg, var(--blue), #0891b2);
-  box-shadow: 0 7px 16px #2563eb2b;
-}
-
-.secondary {
-  color: white;
-  background: linear-gradient(110deg, #0f766e, #0891b2);
-}
-
-.danger-outline {
-  color: #dc2626;
-  background: white;
-  border: 1px solid #fecaca;
-}
-
-.light {
-  color: #1e40af;
-  background: #eff6ff;
-}
-
-.small {
-  padding: 9px 12px;
-  min-height: 38px;
-  font-size: 12px;
-}
-
-.notice {
-  padding: 11px 13px;
-  margin-top: 13px;
-  border-radius: 11px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.notice.info {
-  color: #1d4ed8;
-  background: #eff6ff;
-}
-
-.notice.success {
-  color: #166534;
-  background: #f0fdf4;
-}
-
-.notice.error {
-  color: #b91c1c;
-  background: #fef2f2;
-}
-
-.notice.warning {
-  color: #92400e;
-  background: #fffbeb;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.welcome-panel {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-}
-
-.welcome-panel h2 {
-  font-size: 22px;
-}
-
-.grid-panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-
-.grid-panels .panel {
-  margin: 0;
-}
-
-.panel-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.panel-heading h2 {
-  margin: 0 0 3px;
-}
-
-.panel-heading p {
-  margin: 0;
-}
-
-.gps-status {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 20px 0 14px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #94a3b8;
-  box-shadow: 0 0 0 4px #f1f5f9;
-}
-
-.status-dot.green {
-  background: #22c55e;
-  box-shadow: 0 0 0 4px #dcfce7;
-}
-
-.status-dot.red {
-  background: #ef4444;
-  box-shadow: 0 0 0 4px #fee2e2;
-}
-
-.status-dot.amber {
-  background: #f59e0b;
-  box-shadow: 0 0 0 4px #fef3c7;
-}
-
-.button-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-}
-
-.button-row .button {
-  flex: 1;
-}
-
-.hint {
-  margin: 13px 0 0;
-  font-size: 11px;
-}
-
-.battery {
-  color: var(--muted);
-  font-size: 11px;
-  margin: 12px 0 0;
-}
-
-.map-panel {
-  margin-top: 18px;
-}
-
-.map-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.map-title h2 {
-  margin: 4px 0 0;
-}
-
-.map-chip {
-  padding: 7px 10px;
-  border-radius: 999px;
-  color: #0e7490;
-  background: #ecfeff;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-#map {
-  height: 430px;
-  width: 100%;
-  border-radius: 15px;
-  overflow: hidden;
-  background: #eaf2fb;
-  z-index: 1;
-}
-
-.footer-note {
-  text-align: center;
-  color: #94a3b8;
-  font-size: 11px;
-  margin: 22px 0 0;
-}
-
-@media (max-width: 700px) {
-  .page {
-    padding-top: 25px;
-  }
-
-  .grid-panels {
-    grid-template-columns: 1fr;
-  }
-
-  .panel {
-    padding: 19px;
-    border-radius: 18px;
-  }
-
-  .welcome-panel {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  #map {
-    height: 360px;
-  }
+/* ========================================= FAMILLE GPS – DEV.ASSAMOI Feuille de style principale ========================================= */
+
+:root { --primary: #2563eb; --primary-dark: #1746b5; --success: #16a34a; --danger: #dc2626; --background: #f4f7fc; --surface: #ffffff; --text: #172033; --muted: #718096; --border: #e4eaf2; --shadow: 0 8px 28px rgba(25, 45, 85, 0.08); --radius: 18px; }
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body { min-height: 100vh; font-family: Arial, Helvetica, sans-serif; background: var(--background); color: var(--text); line-height: 1.6; }
+
+/* ========================================= BARRE DE NAVIGATION ========================================= */
+
+.topbar { width: 100%; min-height: 76px; padding: 12px 6%; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 15px; position: sticky; top: 0; z-index: 1000; }
+
+.brand { display: flex; align-items: center; gap: 12px; }
+
+.brand-icon { width: 48px; height: 48px; border-radius: 15px; background: #eaf1ff; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+
+.brand h1 { font-size: 21px; line-height: 1.2; color: var(--primary); }
+
+.brand p { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+
+/* ========================================= STRUCTURE GENERALE ========================================= */
+
+.container { width: min(1100px, 92%); margin: 30px auto; }
+
+.hidden { display: none !important; }
+
+section { width: 100%; }
+
+/* ========================================= BOUTONS ========================================= */
+
+.btn { border: none; border-radius: 12px; padding: 12px 20px; min-height: 44px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s ease; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+
+.btn:hover { transform: translateY(-2px); filter: brightness(0.96); }
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary { background: var(--primary); color: white; }
+
+.btn-success { background: var(--success); color: white; }
+
+.btn-danger { background: var(--danger); color: white; }
+
+.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+
+.btn-copy { background: #eaf1ff; color: var(--primary); }
+
+.full-width { width: 100%; }
+
+/* ========================================= PAGE DE CONNEXION ========================================= */
+
+.auth-section { max-width: 540px; margin: 25px auto 60px; }
+
+.welcome { text-align: center; padding: 20px 10px 28px; }
+
+.welcome-icon { display: inline-flex; width: 70px; height: 70px; border-radius: 22px; background: #eaf1ff; align-items: center; justify-content: center; font-size: 38px; margin-bottom: 15px; }
+
+.welcome h2 { font-size: clamp(23px, 4vw, 30px); line-height: 1.3; margin-bottom: 10px; }
+
+.welcome p { color: var(--muted); font-size: 14px; }
+
+.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 25px; }
+
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f0f3f9; padding: 5px; border-radius: 12px; margin-bottom: 25px; }
+
+.tab { border: none; border-radius: 9px; background: transparent; padding: 11px; color: var(--muted); font-size: 14px; font-weight: 700; cursor: pointer; }
+
+.tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+
+.auth-card h2 { font-size: 21px; margin-bottom: 20px; }
+
+/* ========================================= CHAMPS DE FORMULAIRE ========================================= */
+
+label { display: block; font-size: 13px; font-weight: 700; margin: 14px 0 7px; }
+
+input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px; background: #fbfcff; color: var(--text); font-size: 15px; outline: none; transition: 0.2s; }
+
+input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10); }
+
+.auth-card form .btn { margin-top: 22px; }
+
+.form-note { color: var(--muted); font-size: 12px; margin-top: 15px; text-align: center; }
+
+/* ========================================= TABLEAU DE BORD ========================================= */
+
+.dashboard-header { margin: 25px 0; }
+
+.dashboard-header h2 { font-size: clamp(22px, 4vw, 29px); }
+
+.dashboard-header p { color: var(--muted); }
+
+.eyebrow { color: var(--primary) !important; font-size: 11px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; }
+
+/* ========================================= CARTE DU NUMERO GPS ========================================= */
+
+.profile-card { background: linear-gradient(120deg, #2563eb, #4f8df7); color: white; padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 22px; }
+
+.card-label { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: 0.9; }
+
+.gps-number { font-size: clamp(35px, 7vw, 48px); font-weight: 900; line-height: 1.3; margin: 5px 0; }
+
+.small-text { font-size: 12px; opacity: 0.9; }
+
+.profile-card .btn-copy { flex-shrink: 0; }
+
+/* ========================================= CARTES DE SECTIONS ========================================= */
+
+.section-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 23px; margin-bottom: 22px; box-shadow: var(--shadow); }
+
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+
+.section-heading h3 { font-size: 18px; }
+
+.section-heading p { color: var(--muted); font-size: 13px; }
+
+/* ========================================= STATUT DE PARTAGE ========================================= */
+
+.status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 7px 13px; border-radius: 30px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+
+.status-on { background: #dcfce7; color: #15803d; }
+
+.status-off { background: #fee2e2; color: #b91c1c; }
+
+.sharing-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+
+.location-info { background: #f6f8fc; border-radius: 12px; padding: 15px; font-size: 13px; }
+
+.location-info p + p { margin-top: 8px; }
+
+.privacy-note { font-size: 12px; color: var(--muted); margin-top: 15px; }
+
+/* ========================================= RECHERCHE ========================================= */
+
+.search-form { display: flex; gap: 10px; }
+
+.search-form input { flex: 1; min-width: 0; }
+
+.search-result { margin-top: 15px; padding: 15px; border-radius: 12px; background: #f3f6fc; font-size: 14px; }
+
+/* ========================================= CARTE LEAFLET ========================================= */
+
+.map-card { overflow: hidden; }
+
+.map-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; font-size: 12px; color: var(--muted); }
+
+.map-legend span { display: inline-flex; align-items: center; gap: 7px; }
+
+.legend-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+.legend-dot.red { background: #ef2929; }
+
+.legend-dot.blue { background: #2675ff; }
+
+.legend-dot.green { background: #16a34a; }
+
+#map { width: 100%; height: 430px; border-radius: 14px; border: 1px solid var(--border); z-index: 1; }
+
+.map-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+/* ========================================= MARQUEURS GPS PERSONNALISES ========================================= */
+
+.gps-marker { width: 19px; height: 19px; border-radius: 50%; border: 3px solid white; display: block; }
+
+.gps-marker.red { background: #ef2929; box-shadow: 0 0 8px #ef2929, 0 0 17px rgba(239, 41, 41, 0.7); animation: redPulse 1.2s infinite; }
+
+.gps-marker.blue { background: #2675ff; box-shadow: 0 0 9px #2675ff, 0 0 22px rgba(38, 117, 255, 0.8); animation: bluePulse 1.5s infinite; }
+
+.gps-marker.green { background: #16a34a; box-shadow: 0 0 9px #16a34a, 0 0 20px rgba(22, 163, 74, 0.7); }
+
+@keyframes redPulse { 0%, 100% { box-shadow: 0 0 5px #ef2929, 0 0 10px rgba(239, 41, 41, 0.4); } 50% { box-shadow: 0 0 12px #ef2929, 0 0 25px rgba(239, 41, 41, 0.9); } }
+
+@keyframes bluePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+/* ========================================= SECURITE ========================================= */
+
+.security-card { background: #f0f7ff; border-color: #dceaff; }
+
+.security-card h3 { margin-bottom: 12px; }
+
+.security-card ul { padding-left: 22px; color: #52627a; font-size: 13px; }
+
+.security-card li + li { margin-top: 7px; }
+
+/* ========================================= MESSAGES ========================================= */
+
+.message-box { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(90%, 450px); padding: 14px 18px; background: #172033; color: white; border-radius: 12px; box-shadow: var(--shadow); z-index: 2000; text-align: center; font-size: 13px; }
+
+/* ========================================= PIED DE PAGE ========================================= */
+
+footer { text-align: center; padding: 25px 15px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); background: white; }
+
+/* ========================================= ACCESSIBILITE ========================================= */
+
+button:focus-visible, input:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.3); outline-offset: 2px; }
+
+/* ========================================= RESPONSIVE : TELEPHONES ========================================= */
+
+@media (max-width: 650px) {
+
+.topbar { padding: 10px 4%; }
+
+.brand h1 { font-size: 18px; }
+
+.container { width: 94%; margin: 18px auto; }
+
+.auth-card { padding: 19px; }
+
+.profile-card { padding: 19px; align-items: flex-start; flex-direction: column; }
+
+.profile-card .btn { width: 100%; }
+
+.section-card { padding: 17px; }
+
+.section-heading { align-items: flex-start; }
+
+.sharing-controls { flex-direction: column; }
+
+.sharing-controls .btn { width: 100%; }
+
+.search-form { flex-direction: column; }
+
+.search-form .btn { width: 100%; }
+
+#map { height: 340px; }
+
+.map-legend { flex-direction: column; gap: 8px; } }
+
+/* ========================================= PETITS ECRANS ========================================= */
+
+@media (max-width: 360px) {
+
+.brand-icon { width: 40px; height: 40px; }
+
+.brand h1 { font-size: 16px; }
+
+.btn { padding: 11px 13px; font-size: 13px; }
+
+.section-heading h3 { font-size: 16px; }
+
 }
