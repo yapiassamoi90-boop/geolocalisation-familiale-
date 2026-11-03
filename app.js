@@ -1,6 +1,8 @@
+
 /* =========================================================
    FAMILLE GPS - Dev.Assamoi
    Supabase + Leaflet + GPS volontaire
+   Version mise à jour : diagnostic authentification
    ========================================================= */
 
 'use strict';
@@ -11,6 +13,7 @@ const SUPABASE_URL = 'https://qcdxsafopgihmdwudayb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sSgPsSwF436uHqtqgF9ytw_RKqqwIjt';
 
 const REFRESH_INTERVAL = 10000;
+
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
   maximumAge: 5000,
@@ -334,6 +337,61 @@ async function chargerProfil(user) {
   currentUser = user;
 
   try {
+    /*
+     * DIAGNOSTIC AUTHENTIFICATION
+     * Vérifier que Supabase reconnaît réellement
+     * l'utilisateur et que son UUID correspond.
+     */
+
+    const { data: authData, error: authError } =
+      await db.auth.getUser();
+
+    console.log(
+      '[Famille GPS] Utilisateur authentifié :',
+      authData?.user?.id || null
+    );
+
+    console.log(
+      '[Famille GPS] UUID utilisateur attendu :',
+      user.id
+    );
+
+    if (authError) {
+      console.error(
+        '[Famille GPS] Erreur authentification :',
+        authError
+      );
+
+      throw new Error(
+        'Supabase ne reconnaît pas correctement ta session : ' +
+        authError.message
+      );
+    }
+
+    if (!authData?.user) {
+      throw new Error(
+        'Aucun utilisateur authentifié. Reconnecte-toi.'
+      );
+    }
+
+    if (authData.user.id !== user.id) {
+      console.error(
+        '[Famille GPS] Les UUID ne correspondent pas.'
+      );
+
+      throw new Error(
+        'La session Supabase ne correspond pas à ton compte. Déconnecte-toi puis reconnecte-toi.'
+      );
+    }
+
+    console.log(
+      '[Famille GPS] Vérification authentification réussie.'
+    );
+
+    /*
+     * LECTURE DU PROFIL
+     */
+
     const { data, error } = await db
       .from('family_users')
       .select(`
@@ -342,20 +400,44 @@ async function chargerProfil(user) {
         share_enabled,
         latitude,
         longitude,
+        battery_level,
         updated_at
       `)
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', authData.user.id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error(
+        '[Famille GPS] Erreur lecture family_users :',
+        {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        }
+      );
+
+      if (error.code === 'PGRST116') {
+        throw new Error(
+          'Profil GPS introuvable. Vérifie que le déclencheur Supabase a créé ton profil.'
+        );
+      }
+
+      throw error;
+    }
 
     if (!data) {
       throw new Error(
-        'Profil GPS introuvable. Vérifie que Supabase crée automatiquement une ligne dans family_users après chaque inscription.'
+        'Profil GPS introuvable dans family_users.'
       );
     }
 
     myProfile = data;
+
+    console.log(
+      '[Famille GPS] Profil chargé avec succès :',
+      data.id
+    );
 
     if (userName) {
       userName.textContent = data.name || 'Utilisateur';
@@ -390,7 +472,7 @@ async function chargerProfil(user) {
     }
 
   } catch (error) {
-    console.error('Chargement profil :', error);
+    console.error('[Famille GPS] Chargement profil :', error);
 
     afficherMessage(
       'Impossible de charger ton profil : ' + error.message,
@@ -585,10 +667,8 @@ async function demarrerPartageGPS() {
   let serveurActive = false;
 
   try {
-    // Vérifier d'abord que le GPS fonctionne.
     const firstPosition = await obtenirPosition();
 
-    // Activer le partage côté serveur.
     const { error } = await db.rpc(
       'set_my_sharing',
       {
@@ -601,7 +681,6 @@ async function demarrerPartageGPS() {
     serveurActive = true;
     myProfile.share_enabled = true;
 
-    // Démarrer le suivi GPS continu.
     gpsWatchId = navigator.geolocation.watchPosition(
       position => {
         traiterNouvellePosition(position).catch(error => {
@@ -637,7 +716,6 @@ async function demarrerPartageGPS() {
       throw new Error('Impossible de démarrer le suivi GPS.');
     }
 
-    // Enregistrer immédiatement la première position.
     await traiterNouvellePosition(firstPosition);
 
     afficherMessage(
@@ -712,10 +790,6 @@ async function traiterNouvellePosition(position) {
     const latitude = position.coords.latitude;
     const longitude = position.coords.longitude;
 
-    const accuracy = Math.round(
-      position.coords.accuracy || 0
-    );
-
     if (
       !Number.isFinite(latitude) ||
       !Number.isFinite(longitude) ||
@@ -727,12 +801,14 @@ async function traiterNouvellePosition(position) {
       throw new Error('Coordonnées GPS invalides.');
     }
 
+    const batteryLevel = await obtenirBatterie();
+
     const { error } = await db.rpc(
       'update_my_location',
       {
         p_latitude: latitude,
         p_longitude: longitude,
-        p_accuracy: accuracy
+        p_battery_level: batteryLevel
       }
     );
 
@@ -740,6 +816,7 @@ async function traiterNouvellePosition(position) {
 
     myProfile.latitude = latitude;
     myProfile.longitude = longitude;
+    myProfile.battery_level = batteryLevel;
     myProfile.updated_at = new Date().toISOString();
 
     afficherMaPosition(latitude, longitude);
@@ -786,7 +863,6 @@ async function arreterPartageGPS(confirmer = true) {
     stopSharingBtn.textContent = 'Arrêt en cours...';
   }
 
-  // Arrêter immédiatement le GPS sur cet appareil.
   arreterSuiviLocal();
 
   try {
@@ -802,6 +878,7 @@ async function arreterPartageGPS(confirmer = true) {
     myProfile.share_enabled = false;
     myProfile.latitude = null;
     myProfile.longitude = null;
+    myProfile.battery_level = null;
     myProfile.updated_at = new Date().toISOString();
 
     if (markers.me && map) {
@@ -812,7 +889,7 @@ async function arreterPartageGPS(confirmer = true) {
     actualiserInformationsProfil();
 
     afficherMessage(
-      'Partage désactivé. Tes anciennes coordonnées ont été effacées si la fonction SQL les supprime.',
+      'Partage désactivé. Tes anciennes coordonnées ont été effacées.',
       'success'
     );
 
@@ -854,7 +931,10 @@ function actualiserInformationsProfil() {
   }
 
   if (myBattery) {
-    myBattery.textContent = 'Batterie : non enregistrée';
+    myBattery.textContent =
+      myProfile.battery_level != null
+        ? `Batterie : ${myProfile.battery_level}%`
+        : 'Batterie : non disponible';
   }
 
   if (myUpdatedAt) {
@@ -888,9 +968,21 @@ async function rechercherMembre(memberId) {
 
   if (error) throw error;
 
-  return Array.isArray(data)
+  const row = Array.isArray(data)
     ? data[0] || null
     : data;
+
+  if (!row) return null;
+
+  return {
+    id: row.member_id,
+    name: row.member_name,
+    share_enabled: row.sharing_enabled,
+    latitude: row.member_latitude,
+    longitude: row.member_longitude,
+    battery_level: row.member_battery,
+    updated_at: row.location_updated_at
+  };
 }
 
 /* ================= FORMULAIRE RECHERCHE ================= */
@@ -1080,7 +1172,6 @@ function demarrerActualisationRecherche() {
     try {
       const member = await rechercherMembre(id);
 
-      // Éviter d'afficher les résultats d'une ancienne recherche.
       if (currentTargetId !== id) return;
 
       if (!member || !member.share_enabled) {
@@ -1098,6 +1189,8 @@ function demarrerActualisationRecherche() {
         member.latitude == null ||
         member.longitude == null
       ) {
+        supprimerMarqueurRecherche(id);
+
         afficherResultat(
           `${member.name || 'Ce membre'} partage sa position, mais aucune position n'est disponible.`,
           'warning'
