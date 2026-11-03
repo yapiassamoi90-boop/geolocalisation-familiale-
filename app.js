@@ -2,7 +2,6 @@
 /* =========================================================
    FAMILLE GPS - Dev.Assamoi
    Supabase + Leaflet + GPS volontaire
-   Version mise à jour : diagnostic authentification
    ========================================================= */
 
 'use strict';
@@ -337,61 +336,6 @@ async function chargerProfil(user) {
   currentUser = user;
 
   try {
-    /*
-     * DIAGNOSTIC AUTHENTIFICATION
-     * Vérifier que Supabase reconnaît réellement
-     * l'utilisateur et que son UUID correspond.
-     */
-
-    const { data: authData, error: authError } =
-      await db.auth.getUser();
-
-    console.log(
-      '[Famille GPS] Utilisateur authentifié :',
-      authData?.user?.id || null
-    );
-
-    console.log(
-      '[Famille GPS] UUID utilisateur attendu :',
-      user.id
-    );
-
-    if (authError) {
-      console.error(
-        '[Famille GPS] Erreur authentification :',
-        authError
-      );
-
-      throw new Error(
-        'Supabase ne reconnaît pas correctement ta session : ' +
-        authError.message
-      );
-    }
-
-    if (!authData?.user) {
-      throw new Error(
-        'Aucun utilisateur authentifié. Reconnecte-toi.'
-      );
-    }
-
-    if (authData.user.id !== user.id) {
-      console.error(
-        '[Famille GPS] Les UUID ne correspondent pas.'
-      );
-
-      throw new Error(
-        'La session Supabase ne correspond pas à ton compte. Déconnecte-toi puis reconnecte-toi.'
-      );
-    }
-
-    console.log(
-      '[Famille GPS] Vérification authentification réussie.'
-    );
-
-    /*
-     * LECTURE DU PROFIL
-     */
-
     const { data, error } = await db
       .from('family_users')
       .select(`
@@ -403,20 +347,10 @@ async function chargerProfil(user) {
         battery_level,
         updated_at
       `)
-      .eq('auth_user_id', authData.user.id)
+      .eq('auth_user_id', user.id)
       .single();
 
     if (error) {
-      console.error(
-        '[Famille GPS] Erreur lecture family_users :',
-        {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        }
-      );
-
       if (error.code === 'PGRST116') {
         throw new Error(
           'Profil GPS introuvable. Vérifie que le déclencheur Supabase a créé ton profil.'
@@ -433,11 +367,6 @@ async function chargerProfil(user) {
     }
 
     myProfile = data;
-
-    console.log(
-      '[Famille GPS] Profil chargé avec succès :',
-      data.id
-    );
 
     if (userName) {
       userName.textContent = data.name || 'Utilisateur';
@@ -472,7 +401,7 @@ async function chargerProfil(user) {
     }
 
   } catch (error) {
-    console.error('[Famille GPS] Chargement profil :', error);
+    console.error('Chargement profil :', error);
 
     afficherMessage(
       'Impossible de charger ton profil : ' + error.message,
@@ -667,8 +596,10 @@ async function demarrerPartageGPS() {
   let serveurActive = false;
 
   try {
+    // Vérifier d'abord que le GPS fonctionne.
     const firstPosition = await obtenirPosition();
 
+    // Activer le partage côté serveur.
     const { error } = await db.rpc(
       'set_my_sharing',
       {
@@ -681,6 +612,7 @@ async function demarrerPartageGPS() {
     serveurActive = true;
     myProfile.share_enabled = true;
 
+    // Démarrer le suivi GPS continu.
     gpsWatchId = navigator.geolocation.watchPosition(
       position => {
         traiterNouvellePosition(position).catch(error => {
@@ -716,6 +648,7 @@ async function demarrerPartageGPS() {
       throw new Error('Impossible de démarrer le suivi GPS.');
     }
 
+    // Enregistrer immédiatement la première position.
     await traiterNouvellePosition(firstPosition);
 
     afficherMessage(
@@ -801,6 +734,8 @@ async function traiterNouvellePosition(position) {
       throw new Error('Coordonnées GPS invalides.');
     }
 
+    // La fonction SQL attend p_battery_level,
+    // et non p_accuracy.
     const batteryLevel = await obtenirBatterie();
 
     const { error } = await db.rpc(
@@ -863,6 +798,7 @@ async function arreterPartageGPS(confirmer = true) {
     stopSharingBtn.textContent = 'Arrêt en cours...';
   }
 
+  // Arrêter immédiatement le GPS sur cet appareil.
   arreterSuiviLocal();
 
   try {
@@ -968,6 +904,8 @@ async function rechercherMembre(memberId) {
 
   if (error) throw error;
 
+  // Conversion des noms SQL vers les noms utilisés
+  // par le reste de l'application.
   const row = Array.isArray(data)
     ? data[0] || null
     : data;
@@ -1172,6 +1110,7 @@ function demarrerActualisationRecherche() {
     try {
       const member = await rechercherMembre(id);
 
+      // Éviter d'afficher les résultats d'une ancienne recherche.
       if (currentTargetId !== id) return;
 
       if (!member || !member.share_enabled) {
