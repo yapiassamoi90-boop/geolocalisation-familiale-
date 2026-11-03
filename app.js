@@ -605,3 +605,613 @@ async function demarrerPartageGPS() {
     actualiserStatutPartage();
   }
 }
+/* ENREGISTRER UNE POSITION GPS */
+async function traiterNouvellePosition(position) {
+  if (!currentUser || !myProfile || !myProfile.share_enabled) {
+    return;
+  }
+
+  if (gpsWatchId === null || locationInFlight) {
+    return;
+  }
+
+  locationInFlight = true;
+
+  try {
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      throw new Error('Coordonnées GPS invalides.');
+    }
+
+    const battery = await obtenirBatterie();
+
+    const { error } = await db.rpc(
+      'update_my_location',
+      {
+        p_latitude: latitude,
+        p_longitude: longitude,
+        p_battery: battery
+      }
+    );
+
+    if (error) throw error;
+
+    myProfile.latitude = latitude;
+    myProfile.longitude = longitude;
+    myProfile.battery_level = battery;
+    myProfile.updated_at = new Date().toISOString();
+
+    afficherMaPosition(latitude, longitude);
+    actualiserInformationsProfil();
+
+  } finally {
+    locationInFlight = false;
+  }
+}
+
+/* ARRÊTER LE SUIVI GPS LOCAL */
+function arreterSuiviLocal() {
+  if (
+    gpsWatchId !== null &&
+    navigator.geolocation
+  ) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+  }
+
+  gpsWatchId = null;
+  locationInFlight = false;
+}
+
+/* DÉSACTIVER LE PARTAGE GPS */
+async function arreterPartageGPS(confirmer = true) {
+  if (gpsStopping || !currentUser) return false;
+
+  if (
+    confirmer &&
+    !confirm(
+      'Désactiver le partage GPS et effacer ta dernière position enregistrée ?'
+    )
+  ) {
+    return false;
+  }
+
+  gpsStopping = true;
+
+  if (stopSharingBtn) {
+    stopSharingBtn.textContent = 'Arrêt...';
+  }
+
+  // Arrêt local immédiat.
+  arreterSuiviLocal();
+
+  try {
+    const { error } = await db.rpc(
+      'set_my_sharing',
+      {
+        p_enabled: false
+      }
+    );
+
+    if (error) throw error;
+
+    if (myProfile) {
+      myProfile.share_enabled = false;
+      myProfile.latitude = null;
+      myProfile.longitude = null;
+      myProfile.battery_level = null;
+      myProfile.updated_at = new Date().toISOString();
+    }
+
+    if (markers.me && map) {
+      map.removeLayer(markers.me);
+      delete markers.me;
+    }
+
+    actualiserInformationsProfil();
+
+    afficherMessage(
+      'Partage désactivé. Tes anciennes coordonnées ont été effacées.',
+      'success'
+    );
+
+    return true;
+
+  } catch (error) {
+    console.error('Arrêt GPS :', error);
+
+    afficherMessage(
+      'Le GPS local est arrêté, mais la désactivation serveur a échoué : ' +
+      error.message,
+      'error'
+    );
+
+    return false;
+
+  } finally {
+    gpsStopping = false;
+
+    if (stopSharingBtn) {
+      stopSharingBtn.textContent = 'Arrêter le partage';
+    }
+
+    actualiserStatutPartage();
+  }
+}
+
+/* INFORMATIONS DU PROFIL */
+function actualiserInformationsProfil() {
+  if (!myProfile) return;
+
+  if (myLocation) {
+    myLocation.textContent =
+      myProfile.latitude != null &&
+      myProfile.longitude != null
+        ? `${Number(myProfile.latitude).toFixed(6)}, ${Number(myProfile.longitude).toFixed(6)}`
+        : 'Position non disponible';
+  }
+
+  if (myBattery) {
+    myBattery.textContent =
+      myProfile.battery_level == null
+        ? 'Batterie : indisponible'
+        : `Batterie : ${myProfile.battery_level}%`;
+  }
+
+  if (myUpdatedAt) {
+    myUpdatedAt.textContent =
+      myProfile.updated_at
+        ? 'Mise à jour : ' +
+          new Date(myProfile.updated_at).toLocaleString('fr-FR')
+        : 'Aucune mise à jour';
+  }
+}
+
+/* RECHERCHER UN MEMBRE */
+async function rechercherMembre(memberId) {
+  const { data, error } = await db.rpc(
+    'find_family_member',
+    {
+      p_id: Number(memberId)
+    }
+  );
+
+  if (error) throw error;
+
+  return Array.isArray(data)
+    ? (data[0] || null)
+    : data;
+}
+
+/* FORMULAIRE DE RECHERCHE */
+async function observerAmi(event) {
+  event?.preventDefault();
+
+  if (!currentUser) {
+    return afficherResultat(
+      'Connecte-toi pour rechercher un membre.',
+      'error'
+    );
+  }
+
+  const targetId = searchGpsId?.value.trim() || '';
+
+  if (!/^[1-9][0-9]*$/.test(targetId)) {
+    return afficherResultat(
+      'Entre un identifiant GPS numérique valide.',
+      'error'
+    );
+  }
+
+  if (searchSubmitBtn) {
+    searchSubmitBtn.disabled = true;
+  }
+
+  try {
+    const member = await rechercherMembre(targetId);
+
+    if (!member) {
+      arreterActualisationRecherche();
+
+      return afficherResultat(
+        'Aucun membre trouvé avec cet identifiant.',
+        'warning'
+      );
+    }
+
+    if (Number(member.id) === Number(myProfile?.id)) {
+      return afficherResultat(
+        'Il s’agit de ton propre identifiant GPS.',
+        'info'
+      );
+    }
+
+    arreterActualisationRecherche();
+    currentTargetId = String(member.id);
+
+    if (!member.share_enabled) {
+      supprimerMarqueurRecherche(currentTargetId);
+      currentTargetId = null;
+
+      return afficherResultat(
+        `${member.name} ne partage pas actuellement sa position.`,
+        'warning'
+      );
+    }
+
+    if (
+      member.latitude == null ||
+      member.longitude == null
+    ) {
+      demarrerActualisationRecherche();
+
+      return afficherResultat(
+        `${member.name} a activé le partage, mais aucune position n'est encore disponible.`,
+        'warning'
+      );
+    }
+
+    afficherPositionMembre(member);
+
+    afficherResultat(
+      `Position partagée de ${member.name}. Actualisation toutes les 10 secondes lorsque l'application est active.`,
+      'success'
+    );
+
+    demarrerActualisationRecherche();
+
+  } catch (error) {
+    console.error('Recherche :', error);
+
+    afficherResultat(
+      'Recherche impossible : ' + error.message,
+      'error'
+    );
+
+  } finally {
+    if (searchSubmitBtn) {
+      searchSubmitBtn.disabled = false;
+    }
+  }
+}
+
+/* AFFICHER POSITION DU MEMBRE */
+function afficherPositionMembre(member) {
+  if (
+    member.latitude == null ||
+    member.longitude == null
+  ) {
+    return;
+  }
+
+  initialiserCarte();
+
+  if (!map) return;
+
+  const latitude = Number(member.latitude);
+  const longitude = Number(member.longitude);
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    afficherResultat(
+      'Coordonnées GPS invalides.',
+      'error'
+    );
+
+    return;
+  }
+
+  const id = String(member.id);
+  const position = [latitude, longitude];
+
+  if (markers[id]) {
+    markers[id].setLatLng(position);
+
+  } else {
+    markers[id] = L.marker(position, {
+      icon: creerIconeGPS('blue')
+    }).addTo(map);
+  }
+
+  const popup = document.createElement('div');
+
+  const name = document.createElement('strong');
+  const idLine = document.createElement('div');
+
+  name.textContent = member.name || 'Membre';
+  idLine.textContent = `ID GPS : ${member.id}`;
+
+  popup.append(name, idLine);
+
+  markers[id].bindPopup(popup);
+
+  map.setView(position, 15);
+}
+
+/* SUPPRIMER UN MARQUEUR */
+function supprimerMarqueurRecherche(id) {
+  if (markers[id] && map) {
+    map.removeLayer(markers[id]);
+    delete markers[id];
+  }
+}
+
+/* ACTUALISATION AUTOMATIQUE */
+function demarrerActualisationRecherche() {
+  arreterActualisationRecherche(false);
+
+  if (!currentTargetId) return;
+
+  searchInterval = setInterval(async () => {
+    const id = currentTargetId;
+
+    if (!id || !currentUser) return;
+
+    try {
+      const member = await rechercherMembre(id);
+
+      if (!member || !member.share_enabled) {
+        supprimerMarqueurRecherche(id);
+        arreterActualisationRecherche();
+
+        afficherResultat(
+          'Ce membre ne partage plus sa position.',
+          'warning'
+        );
+
+        return;
+      }
+
+      if (
+        member.latitude == null ||
+        member.longitude == null
+      ) {
+        afficherResultat(
+          `${member.name} partage sa position, mais aucune position n'est disponible.`,
+          'warning'
+        );
+
+        return;
+      }
+
+      afficherPositionMembre(member);
+
+    } catch (error) {
+      console.error('Actualisation :', error);
+    }
+
+  }, REFRESH_INTERVAL);
+}
+
+function arreterActualisationRecherche(effacerCible = true) {
+  if (searchInterval !== null) {
+    clearInterval(searchInterval);
+    searchInterval = null;
+  }
+
+  if (effacerCible) {
+    currentTargetId = null;
+  }
+}
+
+/* COPIER IDENTIFIANT GPS */
+copyIdBtn?.addEventListener('click', async () => {
+  if (!myProfile) return;
+
+  try {
+    await navigator.clipboard.writeText(
+      String(myProfile.id)
+    );
+
+    afficherMessage(
+      'Identifiant GPS copié !',
+      'success'
+    );
+
+  } catch (error) {
+    afficherMessage(
+      'Copie impossible. Ton identifiant est : ' + myProfile.id,
+      'warning'
+    );
+  }
+});
+
+/* DÉCONNEXION */
+async function deconnecterUtilisateur() {
+  if (!currentUser) return;
+
+  if (myProfile?.share_enabled) {
+    const ok = confirm(
+      'Ton partage GPS est activé. Désactiver le partage et effacer tes coordonnées avant de te déconnecter ?'
+    );
+
+    if (!ok) return;
+
+    const stopped = await arreterPartageGPS(false);
+
+    if (!stopped) {
+      afficherMessage(
+        'Déconnexion annulée : le partage n’a pas pu être désactivé.',
+        'error'
+      );
+
+      return;
+    }
+
+  } else {
+    arreterSuiviLocal();
+  }
+
+  arreterActualisationRecherche();
+
+  const { error } = await db.auth.signOut();
+
+  if (error) {
+    afficherMessage(
+      'Erreur de déconnexion : ' + error.message,
+      'error'
+    );
+
+    return;
+  }
+
+  currentUser = null;
+  myProfile = null;
+
+  Object.keys(markers).forEach(id => {
+    if (map) {
+      map.removeLayer(markers[id]);
+    }
+
+    delete markers[id];
+  });
+
+  afficherConnexion();
+  afficherFormulaire('login');
+
+  afficherMessage(
+    'Tu es déconnecté.',
+    'success'
+  );
+}
+
+/* ÉVÉNEMENTS DES BOUTONS */
+registerForm?.addEventListener(
+  'submit',
+  inscrireUtilisateur
+);
+
+loginForm?.addEventListener(
+  'submit',
+  connecterUtilisateur
+);
+
+startSharingBtn?.addEventListener(
+  'click',
+  demarrerPartageGPS
+);
+
+stopSharingBtn?.addEventListener(
+  'click',
+  () => arreterPartageGPS(true)
+);
+
+searchForm?.addEventListener(
+  'submit',
+  observerAmi
+);
+
+logoutBtn?.addEventListener(
+  'click',
+  deconnecterUtilisateur
+);
+
+/* RESTAURER LA SESSION */
+async function restaurerSession() {
+  if (!db) {
+    afficherConnexion();
+
+    afficherMessage(
+      'Supabase est indisponible. Vérifie la configuration.',
+      'error'
+    );
+
+    return;
+  }
+
+  try {
+    const { data, error } = await db.auth.getSession();
+
+    if (error) throw error;
+
+    if (data.session?.user) {
+      await chargerProfil(data.session.user);
+
+    } else {
+      afficherConnexion();
+      afficherFormulaire('login');
+    }
+
+  } catch (error) {
+    console.error('Restauration session :', error);
+
+    afficherConnexion();
+
+    afficherMessage(
+      'Impossible de restaurer la session : ' + error.message,
+      'error'
+    );
+  }
+}
+
+/* ÉCOUTER LA DÉCONNEXION */
+if (db) {
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      myProfile = null;
+
+      arreterSuiviLocal();
+      arreterActualisationRecherche();
+
+      afficherConnexion();
+      afficherFormulaire('login');
+    }
+  });
+}
+
+/* SERVICE WORKER */
+async function enregistrerServiceWorker() {
+  if (
+    !('serviceWorker' in navigator) ||
+    !window.isSecureContext
+  ) {
+    return;
+  }
+
+  try {
+    await navigator.serviceWorker.register(
+      './service-worker.js'
+    );
+
+    console.log('Service Worker activé.');
+
+  } catch (error) {
+    console.error('Service Worker :', error);
+  }
+}
+
+/* DÉMARRAGE DE L'APPLICATION */
+document.addEventListener(
+  'DOMContentLoaded',
+  async () => {
+    afficherFormulaire('login');
+
+    await restaurerSession();
+
+    enregistrerServiceWorker();
+
+    obtenirBatterie();
+
+    console.log(
+      'Famille GPS - Application initialisée.'
+    );
+  }
+);
+
+/* COMPATIBILITÉ */
+window.observerAmi = observerAmi;
