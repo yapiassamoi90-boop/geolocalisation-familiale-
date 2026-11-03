@@ -5,51 +5,75 @@
 
 'use strict';
 
-/* CONFIGURATION */
+/* ================= CONFIGURATION ================= */
+
 const SUPABASE_URL = 'https://qcdxsafopgihmdwudayb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sSgPsSwF436uHqtqgF9ytw_RKqqwIjt';
+
 const REFRESH_INTERVAL = 10000;
+const GPS_OPTIONS = {
+  enableHighAccuracy: true,
+  maximumAge: 5000,
+  timeout: 20000
+};
+
+/* ================= VARIABLES ================= */
 
 let db = null;
 let currentUser = null;
 let myProfile = null;
+
 let map = null;
 let markers = {};
+
 let gpsWatchId = null;
 let searchInterval = null;
 let currentTargetId = null;
+
 let gpsStarting = false;
 let gpsStopping = false;
 let locationInFlight = false;
-let batteryObject = null;
-let messageTimeout = null;
 
-/* ELEMENTS HTML */
+let messageTimeout = null;
+let batteryObject = null;
+
+/* ================= ÉLÉMENTS HTML ================= */
+
 const $ = id => document.getElementById(id);
 
 const authSection = $('authSection');
 const appSection = $('appSection');
+
 const registerForm = $('registerForm');
 const loginForm = $('loginForm');
+
 const registerName = $('registerName');
 const registerEmail = $('registerEmail');
 const registerPassword = $('registerPassword');
+
 const loginEmail = $('loginEmail');
 const loginPassword = $('loginPassword');
+
 const userName = $('userName');
 const myGpsId = $('myGpsId');
+
 const sharingStatus = $('sharingStatus');
 const startSharingBtn = $('startSharingBtn');
 const stopSharingBtn = $('stopSharingBtn');
+
 const myLocation = $('myLocation');
 const myBattery = $('myBattery');
 const myUpdatedAt = $('myUpdatedAt');
+
 const searchForm = $('searchForm');
 const searchGpsId = $('searchGpsId');
 const searchResult = $('searchResult');
+
 const messageBox = $('messageBox');
+
 const logoutBtn = $('logoutBtn');
 const copyIdBtn = $('copyIdBtn');
+
 const showLoginBtn = $('showLoginBtn');
 const showRegisterBtn = $('showRegisterBtn');
 
@@ -57,7 +81,8 @@ const searchSubmitBtn = searchForm
   ? searchForm.querySelector('[type="submit"]')
   : null;
 
-/* INITIALISATION SUPABASE */
+/* ================= SUPABASE ================= */
+
 try {
   if (!window.supabase) {
     throw new Error('Bibliothèque Supabase introuvable.');
@@ -69,10 +94,11 @@ try {
   );
 
 } catch (error) {
-  console.error(error);
+  console.error('Initialisation Supabase :', error);
 }
 
-/* MESSAGES */
+/* ================= MESSAGES ================= */
+
 function afficherMessage(message, type = 'info') {
   if (!messageBox) return;
 
@@ -80,16 +106,23 @@ function afficherMessage(message, type = 'info') {
   messageBox.className = `message-box ${type}`;
   messageBox.classList.remove('hidden');
 
-  clearTimeout(messageTimeout);
+  if (messageTimeout) {
+    clearTimeout(messageTimeout);
+  }
 
   messageTimeout = setTimeout(() => {
     messageBox.classList.add('hidden');
-  }, 5000);
+  }, 6000);
 }
 
 function cacherMessage() {
-  if (messageBox) {
-    messageBox.classList.add('hidden');
+  if (!messageBox) return;
+
+  messageBox.classList.add('hidden');
+
+  if (messageTimeout) {
+    clearTimeout(messageTimeout);
+    messageTimeout = null;
   }
 }
 
@@ -101,26 +134,7 @@ function afficherResultat(message, type = 'info') {
   searchResult.classList.remove('hidden');
 }
 
-/* AFFICHAGE DES ÉCRANS */
-function afficherConnexion() {
-  authSection?.classList.remove('hidden');
-  appSection?.classList.add('hidden');
-  logoutBtn?.classList.add('hidden');
-
-  arreterActualisationRecherche();
-  arreterSuiviLocal();
-}
-
-function afficherApplication() {
-  authSection?.classList.add('hidden');
-  appSection?.classList.remove('hidden');
-  logoutBtn?.classList.remove('hidden');
-
-  setTimeout(() => {
-    initialiserCarte();
-    map?.invalidateSize();
-  }, 300);
-}
+/* ================= FORMULAIRES ================= */
 
 function afficherFormulaire(type) {
   const inscription = type === 'register';
@@ -142,12 +156,38 @@ showRegisterBtn?.addEventListener('click', () => {
   afficherFormulaire('register');
 });
 
-/* INSCRIPTION */
+/* ================= ÉCRANS ================= */
+
+function afficherConnexion() {
+  authSection?.classList.remove('hidden');
+  appSection?.classList.add('hidden');
+  logoutBtn?.classList.add('hidden');
+
+  arreterActualisationRecherche();
+  arreterSuiviLocal();
+
+  actualiserStatutPartage();
+}
+
+function afficherApplication() {
+  authSection?.classList.add('hidden');
+  appSection?.classList.remove('hidden');
+  logoutBtn?.classList.remove('hidden');
+
+  setTimeout(() => {
+    initialiserCarte();
+    map?.invalidateSize();
+  }, 300);
+}
+
+/* ================= INSCRIPTION ================= */
+
 async function inscrireUtilisateur(event) {
   event.preventDefault();
 
   if (!db) {
-    return afficherMessage('Supabase est indisponible.', 'error');
+    afficherMessage('Supabase est indisponible.', 'error');
+    return;
   }
 
   const name = registerName?.value.trim() || '';
@@ -155,21 +195,24 @@ async function inscrireUtilisateur(event) {
   const password = registerPassword?.value || '';
 
   if (name.length < 2) {
-    return afficherMessage('Entre ton nom complet.', 'error');
+    afficherMessage('Entre ton nom complet.', 'error');
+    return;
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return afficherMessage('Entre une adresse email valide.', 'error');
+    afficherMessage('Entre une adresse email valide.', 'error');
+    return;
   }
 
   if (password.length < 8) {
-    return afficherMessage(
+    afficherMessage(
       'Le mot de passe doit contenir au moins 8 caractères.',
       'error'
     );
+    return;
   }
 
-  const button = registerForm.querySelector('[type="submit"]');
+  const button = registerForm?.querySelector('[type="submit"]');
 
   if (button) {
     button.disabled = true;
@@ -192,13 +235,8 @@ async function inscrireUtilisateur(event) {
     if (data.session && data.user) {
       await chargerProfil(data.user);
 
-      afficherMessage(
-        'Inscription réussie ! Ton profil GPS a été créé.',
-        'success'
-      );
-
     } else {
-      registerForm.reset();
+      registerForm?.reset();
 
       afficherFormulaire('login');
 
@@ -207,7 +245,7 @@ async function inscrireUtilisateur(event) {
       }
 
       afficherMessage(
-        'Inscription enregistrée. Vérifie ton email, puis connecte-toi.',
+        'Inscription enregistrée. Vérifie ton email, puis connecte-toi. Ton profil GPS doit être créé automatiquement par Supabase.',
         'success'
       );
     }
@@ -228,25 +266,28 @@ async function inscrireUtilisateur(event) {
   }
 }
 
-/* CONNEXION */
+/* ================= CONNEXION ================= */
+
 async function connecterUtilisateur(event) {
   event.preventDefault();
 
   if (!db) {
-    return afficherMessage('Supabase est indisponible.', 'error');
+    afficherMessage('Supabase est indisponible.', 'error');
+    return;
   }
 
   const email = loginEmail?.value.trim() || '';
   const password = loginPassword?.value || '';
 
   if (!email || !password) {
-    return afficherMessage(
+    afficherMessage(
       'Renseigne ton email et ton mot de passe.',
       'error'
     );
+    return;
   }
 
-  const button = loginForm.querySelector('[type="submit"]');
+  const button = loginForm?.querySelector('[type="submit"]');
 
   if (button) {
     button.disabled = true;
@@ -266,7 +307,7 @@ async function connecterUtilisateur(event) {
   } catch (error) {
     console.error('Connexion :', error);
 
-    let message = error.message;
+    let message = error.message || 'Erreur inconnue.';
 
     if (/email not confirmed/i.test(message)) {
       message = 'Ton email n’est pas encore confirmé.';
@@ -285,7 +326,8 @@ async function connecterUtilisateur(event) {
   }
 }
 
-/* CHARGEMENT DU PROFIL */
+/* ================= CHARGEMENT DU PROFIL ================= */
+
 async function chargerProfil(user) {
   if (!user || !db) return;
 
@@ -300,7 +342,6 @@ async function chargerProfil(user) {
         share_enabled,
         latitude,
         longitude,
-        battery_level,
         updated_at
       `)
       .eq('auth_user_id', user.id)
@@ -309,13 +350,15 @@ async function chargerProfil(user) {
     if (error) throw error;
 
     if (!data) {
-      throw new Error('Profil GPS introuvable.');
+      throw new Error(
+        'Profil GPS introuvable. Vérifie que Supabase crée automatiquement une ligne dans family_users après chaque inscription.'
+      );
     }
 
     myProfile = data;
 
     if (userName) {
-      userName.textContent = data.name;
+      userName.textContent = data.name || 'Utilisateur';
     }
 
     if (myGpsId) {
@@ -323,6 +366,7 @@ async function chargerProfil(user) {
     }
 
     afficherApplication();
+
     actualiserStatutPartage();
     actualiserInformationsProfil();
 
@@ -334,7 +378,7 @@ async function chargerProfil(user) {
       afficherMaPosition(data.latitude, data.longitude);
 
       afficherMessage(
-        'Le partage est activé sur ton compte. Appuie sur Activer pour reprendre le suivi sur cet appareil.',
+        'Le partage est activé sur ton compte. Appuie sur Activer pour reprendre le suivi GPS sur cet appareil.',
         'warning'
       );
 
@@ -355,7 +399,8 @@ async function chargerProfil(user) {
   }
 }
 
-/* STATUT DU PARTAGE */
+/* ================= STATUT DU PARTAGE ================= */
+
 function actualiserStatutPartage() {
   if (!sharingStatus || !myProfile) return;
 
@@ -370,20 +415,25 @@ function actualiserStatutPartage() {
     : 'status-badge status-off';
 
   if (startSharingBtn) {
-    startSharingBtn.disabled = active || gpsStarting;
+    startSharingBtn.disabled =
+      active || gpsStarting || gpsStopping;
   }
 
   if (stopSharingBtn) {
-    stopSharingBtn.disabled = !active || gpsStopping;
+    stopSharingBtn.disabled =
+      !active || gpsStopping || gpsStarting;
   }
 }
 
-/* INITIALISATION DE LA CARTE */
+/* ================= CARTE LEAFLET ================= */
+
 function initialiserCarte() {
   const element = $('map');
 
-  if (!element || typeof L === 'undefined') {
-    console.error('Carte Leaflet indisponible.');
+  if (!element) return;
+
+  if (typeof L === 'undefined') {
+    console.error('Bibliothèque Leaflet introuvable.');
     return;
   }
 
@@ -403,7 +453,8 @@ function initialiserCarte() {
   ).addTo(map);
 }
 
-/* ICONES GPS */
+/* ================= ICÔNES GPS ================= */
+
 function creerIconeGPS(couleur) {
   return L.divIcon({
     className: '',
@@ -413,16 +464,29 @@ function creerIconeGPS(couleur) {
   });
 }
 
-/* AFFICHER MA POSITION */
+/* ================= MA POSITION ================= */
+
 function afficherMaPosition(latitude, longitude) {
   initialiserCarte();
 
   if (!map) return;
 
-  const position = [
-    Number(latitude),
-    Number(longitude)
-  ];
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    console.error('Coordonnées personnelles invalides.');
+    return;
+  }
+
+  const position = [lat, lng];
 
   if (markers.me) {
     markers.me.setLatLng(position);
@@ -438,13 +502,15 @@ function afficherMaPosition(latitude, longitude) {
   map.setView(position, 15);
 }
 
-/* OBTENIR LA POSITION GPS */
+/* ================= OBTENIR POSITION GPS ================= */
+
 function obtenirPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      return reject(
-        new Error('Géolocalisation non disponible.')
+      reject(
+        new Error('La géolocalisation n’est pas disponible.')
       );
+      return;
     }
 
     navigator.geolocation.getCurrentPosition(
@@ -452,28 +518,25 @@ function obtenirPosition() {
 
       error => {
         const messages = {
-          1: 'Autorise la localisation dans ton navigateur.',
-          2: 'Position GPS indisponible.',
+          1: 'Autorise la localisation dans les paramètres de ton navigateur.',
+          2: 'Position GPS indisponible. Vérifie ton GPS.',
           3: 'La demande GPS a expiré. Réessaie.'
         };
 
         reject(
           new Error(
-            messages[error.code] || 'Erreur GPS.'
+            messages[error.code] || 'Erreur de géolocalisation.'
           )
         );
       },
 
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 20000
-      }
+      GPS_OPTIONS
     );
   });
 }
 
-/* BATTERIE */
+/* ================= BATTERIE ================= */
+
 async function obtenirBatterie() {
   if (!navigator.getBattery) return null;
 
@@ -490,22 +553,30 @@ async function obtenirBatterie() {
   }
 }
 
-/* ACTIVER LE PARTAGE GPS */
+/* ================= DÉMARRER LE PARTAGE ================= */
+
 async function demarrerPartageGPS() {
-  if (gpsStarting || gpsWatchId !== null) return;
+  if (gpsStarting || gpsStopping || gpsWatchId !== null) {
+    return;
+  }
 
   if (!currentUser || !myProfile) {
-    return afficherMessage(
+    afficherMessage(
       'Connecte-toi avant d’activer le GPS.',
       'warning'
     );
+    return;
   }
 
-  if (!window.isSecureContext || !navigator.geolocation) {
-    return afficherMessage(
-      'Le GPS nécessite HTTPS et un appareil compatible.',
+  if (
+    !window.isSecureContext ||
+    !navigator.geolocation
+  ) {
+    afficherMessage(
+      'Le GPS nécessite une connexion HTTPS et un appareil compatible.',
       'error'
     );
+    return;
   }
 
   gpsStarting = true;
@@ -514,8 +585,10 @@ async function demarrerPartageGPS() {
   let serveurActive = false;
 
   try {
+    // Vérifier d'abord que le GPS fonctionne.
     const firstPosition = await obtenirPosition();
 
+    // Activer le partage côté serveur.
     const { error } = await db.rpc(
       'set_my_sharing',
       {
@@ -528,13 +601,14 @@ async function demarrerPartageGPS() {
     serveurActive = true;
     myProfile.share_enabled = true;
 
+    // Démarrer le suivi GPS continu.
     gpsWatchId = navigator.geolocation.watchPosition(
       position => {
         traiterNouvellePosition(position).catch(error => {
-          console.error('Erreur GPS :', error);
+          console.error('Enregistrement GPS :', error);
 
           afficherMessage(
-            'Mise à jour GPS impossible : ' + error.message,
+            'Erreur de mise à jour GPS : ' + error.message,
             'error'
           );
         });
@@ -543,19 +617,27 @@ async function demarrerPartageGPS() {
       error => {
         console.error('Suivi GPS :', error);
 
+        const messages = {
+          1: 'Autorisation GPS refusée.',
+          2: 'Position GPS indisponible.',
+          3: 'Délai GPS dépassé.'
+        };
+
         afficherMessage(
-          'Suivi GPS interrompu. Vérifie les autorisations de localisation.',
+          messages[error.code] ||
+          'Le suivi GPS a rencontré une erreur.',
           'error'
         );
       },
 
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 20000
-      }
+      GPS_OPTIONS
     );
 
+    if (gpsWatchId === null) {
+      throw new Error('Impossible de démarrer le suivi GPS.');
+    }
+
+    // Enregistrer immédiatement la première position.
     await traiterNouvellePosition(firstPosition);
 
     afficherMessage(
@@ -579,7 +661,7 @@ async function demarrerPartageGPS() {
       if (stopError) {
         afficherMessage(
           'Erreur GPS : ' + error.message +
-          '. Le partage serveur n’a pas pu être désactivé : ' +
+          '. Attention : le partage serveur n’a pas pu être désactivé : ' +
           stopError.message,
           'error'
         );
@@ -605,13 +687,22 @@ async function demarrerPartageGPS() {
     actualiserStatutPartage();
   }
 }
-/* ENREGISTRER UNE POSITION GPS */
+
+/* ================= ENREGISTRER POSITION ================= */
+
 async function traiterNouvellePosition(position) {
-  if (!currentUser || !myProfile || !myProfile.share_enabled) {
+  if (
+    !currentUser ||
+    !myProfile ||
+    !myProfile.share_enabled
+  ) {
     return;
   }
 
-  if (gpsWatchId === null || locationInFlight) {
+  if (
+    gpsWatchId === null ||
+    locationInFlight
+  ) {
     return;
   }
 
@@ -620,7 +711,10 @@ async function traiterNouvellePosition(position) {
   try {
     const latitude = position.coords.latitude;
     const longitude = position.coords.longitude;
-    const accuracy = Math.round(position.coords.accuracy);
+
+    const accuracy = Math.round(
+      position.coords.accuracy || 0
+    );
 
     if (
       !Number.isFinite(latitude) ||
@@ -656,7 +750,8 @@ async function traiterNouvellePosition(position) {
   }
 }
 
-/* ARRÊTER LE SUIVI GPS LOCAL */
+/* ================= ARRÊTER LE GPS LOCAL ================= */
+
 function arreterSuiviLocal() {
   if (
     gpsWatchId !== null &&
@@ -669,9 +764,12 @@ function arreterSuiviLocal() {
   locationInFlight = false;
 }
 
-/* DÉSACTIVER LE PARTAGE GPS */
+/* ================= DÉSACTIVER LE PARTAGE ================= */
+
 async function arreterPartageGPS(confirmer = true) {
-  if (gpsStopping || !currentUser) return false;
+  if (gpsStopping || !currentUser || !myProfile) {
+    return false;
+  }
 
   if (
     confirmer &&
@@ -685,9 +783,10 @@ async function arreterPartageGPS(confirmer = true) {
   gpsStopping = true;
 
   if (stopSharingBtn) {
-    stopSharingBtn.textContent = 'Arrêt...';
+    stopSharingBtn.textContent = 'Arrêt en cours...';
   }
 
+  // Arrêter immédiatement le GPS sur cet appareil.
   arreterSuiviLocal();
 
   try {
@@ -700,12 +799,10 @@ async function arreterPartageGPS(confirmer = true) {
 
     if (error) throw error;
 
-    if (myProfile) {
-      myProfile.share_enabled = false;
-      myProfile.latitude = null;
-      myProfile.longitude = null;
-      myProfile.updated_at = new Date().toISOString();
-    }
+    myProfile.share_enabled = false;
+    myProfile.latitude = null;
+    myProfile.longitude = null;
+    myProfile.updated_at = new Date().toISOString();
 
     if (markers.me && map) {
       map.removeLayer(markers.me);
@@ -715,7 +812,7 @@ async function arreterPartageGPS(confirmer = true) {
     actualiserInformationsProfil();
 
     afficherMessage(
-      'Partage désactivé. Tes anciennes coordonnées ont été effacées.',
+      'Partage désactivé. Tes anciennes coordonnées ont été effacées si la fonction SQL les supprime.',
       'success'
     );
 
@@ -743,7 +840,8 @@ async function arreterPartageGPS(confirmer = true) {
   }
 }
 
-/* INFORMATIONS DU PROFIL */
+/* ================= INFORMATIONS PROFIL ================= */
+
 function actualiserInformationsProfil() {
   if (!myProfile) return;
 
@@ -768,40 +866,54 @@ function actualiserInformationsProfil() {
   }
 }
 
-/* RECHERCHER UN MEMBRE */
+/* ================= RECHERCHER UN MEMBRE ================= */
+
 async function rechercherMembre(memberId) {
+  if (!db) {
+    throw new Error('Connexion Supabase indisponible.');
+  }
+
+  const numericId = Number(memberId);
+
+  if (!Number.isSafeInteger(numericId) || numericId <= 0) {
+    throw new Error('Identifiant GPS invalide.');
+  }
+
   const { data, error } = await db.rpc(
     'find_family_member',
     {
-      p_member_id: Number(memberId)
+      p_member_id: numericId
     }
   );
 
   if (error) throw error;
 
   return Array.isArray(data)
-    ? (data[0] || null)
+    ? data[0] || null
     : data;
 }
 
-/* FORMULAIRE DE RECHERCHE */
+/* ================= FORMULAIRE RECHERCHE ================= */
+
 async function observerAmi(event) {
   event?.preventDefault();
 
   if (!currentUser) {
-    return afficherResultat(
+    afficherResultat(
       'Connecte-toi pour rechercher un membre.',
       'error'
     );
+    return;
   }
 
   const targetId = searchGpsId?.value.trim() || '';
 
   if (!/^[1-9][0-9]*$/.test(targetId)) {
-    return afficherResultat(
+    afficherResultat(
       'Entre un identifiant GPS numérique valide.',
       'error'
     );
+    return;
   }
 
   if (searchSubmitBtn) {
@@ -814,30 +926,38 @@ async function observerAmi(event) {
     if (!member) {
       arreterActualisationRecherche();
 
-      return afficherResultat(
+      afficherResultat(
         'Aucun membre trouvé avec cet identifiant.',
         'warning'
       );
+      return;
     }
 
-    if (Number(member.id) === Number(myProfile?.id)) {
-      return afficherResultat(
+    if (
+      Number(member.id) === Number(myProfile?.id)
+    ) {
+      arreterActualisationRecherche();
+
+      afficherResultat(
         'Il s’agit de ton propre identifiant GPS.',
         'info'
       );
+      return;
     }
 
     arreterActualisationRecherche();
+
     currentTargetId = String(member.id);
 
     if (!member.share_enabled) {
       supprimerMarqueurRecherche(currentTargetId);
       currentTargetId = null;
 
-      return afficherResultat(
-        `${member.name} ne partage pas actuellement sa position.`,
+      afficherResultat(
+        `${member.name || 'Ce membre'} ne partage pas actuellement sa position.`,
         'warning'
       );
+      return;
     }
 
     if (
@@ -846,16 +966,17 @@ async function observerAmi(event) {
     ) {
       demarrerActualisationRecherche();
 
-      return afficherResultat(
-        `${member.name} a activé le partage, mais aucune position n'est encore disponible.`,
+      afficherResultat(
+        `${member.name || 'Ce membre'} a activé le partage, mais aucune position n'est encore disponible.`,
         'warning'
       );
+      return;
     }
 
     afficherPositionMembre(member);
 
     afficherResultat(
-      `Position partagée de ${member.name}. Actualisation toutes les 10 secondes lorsque l'application est active.`,
+      `Position partagée de ${member.name || 'ce membre'}. Actualisation toutes les 10 secondes lorsque l'application est active.`,
       'success'
     );
 
@@ -876,7 +997,8 @@ async function observerAmi(event) {
   }
 }
 
-/* AFFICHER POSITION DU MEMBRE */
+/* ================= POSITION D'UN MEMBRE ================= */
+
 function afficherPositionMembre(member) {
   if (
     member.latitude == null ||
@@ -904,7 +1026,6 @@ function afficherPositionMembre(member) {
       'Coordonnées GPS invalides.',
       'error'
     );
-
     return;
   }
 
@@ -935,7 +1056,8 @@ function afficherPositionMembre(member) {
   map.setView(position, 15);
 }
 
-/* SUPPRIMER UN MARQUEUR */
+/* ================= SUPPRIMER MARQUEUR ================= */
+
 function supprimerMarqueurRecherche(id) {
   if (markers[id] && map) {
     map.removeLayer(markers[id]);
@@ -943,7 +1065,8 @@ function supprimerMarqueurRecherche(id) {
   }
 }
 
-/* ACTUALISATION AUTOMATIQUE */
+/* ================= ACTUALISATION RECHERCHE ================= */
+
 function demarrerActualisationRecherche() {
   arreterActualisationRecherche(false);
 
@@ -957,6 +1080,9 @@ function demarrerActualisationRecherche() {
     try {
       const member = await rechercherMembre(id);
 
+      // Éviter d'afficher les résultats d'une ancienne recherche.
+      if (currentTargetId !== id) return;
+
       if (!member || !member.share_enabled) {
         supprimerMarqueurRecherche(id);
         arreterActualisationRecherche();
@@ -965,7 +1091,6 @@ function demarrerActualisationRecherche() {
           'Ce membre ne partage plus sa position.',
           'warning'
         );
-
         return;
       }
 
@@ -974,17 +1099,16 @@ function demarrerActualisationRecherche() {
         member.longitude == null
       ) {
         afficherResultat(
-          `${member.name} partage sa position, mais aucune position n'est disponible.`,
+          `${member.name || 'Ce membre'} partage sa position, mais aucune position n'est disponible.`,
           'warning'
         );
-
         return;
       }
 
       afficherPositionMembre(member);
 
     } catch (error) {
-      console.error('Actualisation :', error);
+      console.error('Actualisation recherche :', error);
     }
 
   }, REFRESH_INTERVAL);
@@ -1001,11 +1125,16 @@ function arreterActualisationRecherche(effacerCible = true) {
   }
 }
 
-/* COPIER IDENTIFIANT GPS */
+/* ================= COPIER IDENTIFIANT ================= */
+
 copyIdBtn?.addEventListener('click', async () => {
   if (!myProfile) return;
 
   try {
+    if (!navigator.clipboard) {
+      throw new Error('Presse-papiers indisponible.');
+    }
+
     await navigator.clipboard.writeText(
       String(myProfile.id)
     );
@@ -1017,15 +1146,25 @@ copyIdBtn?.addEventListener('click', async () => {
 
   } catch (error) {
     afficherMessage(
-      'Copie impossible. Ton identifiant est : ' + myProfile.id,
+      'Copie automatique impossible. Ton identifiant GPS est : ' +
+      myProfile.id,
       'warning'
     );
   }
 });
 
-/* DÉCONNEXION */
+/* ================= DÉCONNEXION ================= */
+
 async function deconnecterUtilisateur() {
-  if (!currentUser) return;
+  if (!currentUser || !db) return;
+
+  if (gpsStarting || gpsStopping) {
+    afficherMessage(
+      'Patiente quelques instants avant de te déconnecter.',
+      'warning'
+    );
+    return;
+  }
 
   if (myProfile?.share_enabled) {
     const ok = confirm(
@@ -1041,7 +1180,6 @@ async function deconnecterUtilisateur() {
         'Déconnexion annulée : le partage n’a pas pu être désactivé.',
         'error'
       );
-
       return;
     }
 
@@ -1051,38 +1189,40 @@ async function deconnecterUtilisateur() {
 
   arreterActualisationRecherche();
 
-  const { error } = await db.auth.signOut();
+  try {
+    const { error } = await db.auth.signOut();
 
-  if (error) {
+    if (error) throw error;
+
+    currentUser = null;
+    myProfile = null;
+
+    Object.keys(markers).forEach(id => {
+      if (map) {
+        map.removeLayer(markers[id]);
+      }
+
+      delete markers[id];
+    });
+
+    afficherConnexion();
+    afficherFormulaire('login');
+
+    afficherMessage(
+      'Tu es déconnecté.',
+      'success'
+    );
+
+  } catch (error) {
     afficherMessage(
       'Erreur de déconnexion : ' + error.message,
       'error'
     );
-
-    return;
   }
-
-  currentUser = null;
-  myProfile = null;
-
-  Object.keys(markers).forEach(id => {
-    if (map) {
-      map.removeLayer(markers[id]);
-    }
-
-    delete markers[id];
-  });
-
-  afficherConnexion();
-  afficherFormulaire('login');
-
-  afficherMessage(
-    'Tu es déconnecté.',
-    'success'
-  );
 }
 
-/* ÉVÉNEMENTS DES BOUTONS */
+/* ================= ÉVÉNEMENTS ================= */
+
 registerForm?.addEventListener(
   'submit',
   inscrireUtilisateur
@@ -1113,7 +1253,8 @@ logoutBtn?.addEventListener(
   deconnecterUtilisateur
 );
 
-/* RESTAURER LA SESSION */
+/* ================= RESTAURER SESSION ================= */
+
 async function restaurerSession() {
   if (!db) {
     afficherConnexion();
@@ -1122,7 +1263,6 @@ async function restaurerSession() {
       'Supabase est indisponible. Vérifie la configuration.',
       'error'
     );
-
     return;
   }
 
@@ -1151,7 +1291,8 @@ async function restaurerSession() {
   }
 }
 
-/* ÉCOUTER LA DÉCONNEXION */
+/* ================= ÉCOUTER LA SESSION ================= */
+
 if (db) {
   db.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
@@ -1167,7 +1308,8 @@ if (db) {
   });
 }
 
-/* SERVICE WORKER */
+/* ================= SERVICE WORKER ================= */
+
 async function enregistrerServiceWorker() {
   if (
     !('serviceWorker' in navigator) ||
@@ -1188,23 +1330,34 @@ async function enregistrerServiceWorker() {
   }
 }
 
-/* DÉMARRAGE DE L'APPLICATION */
-document.addEventListener(
-  'DOMContentLoaded',
-  async () => {
-    afficherFormulaire('login');
+/* ================= DÉMARRAGE ================= */
 
-    await restaurerSession();
+async function demarrerApplication() {
+  afficherFormulaire('login');
 
-    enregistrerServiceWorker();
+  await restaurerSession();
 
-    obtenirBatterie();
+  enregistrerServiceWorker();
 
-    console.log(
-      'Famille GPS - Application initialisée.'
-    );
-  }
-);
+  obtenirBatterie();
 
-/* COMPATIBILITÉ */
+  console.log(
+    'Famille GPS - Dev.Assamoi : application initialisée.'
+  );
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener(
+    'DOMContentLoaded',
+    demarrerApplication,
+    { once: true }
+  );
+} else {
+  demarrerApplication();
+}
+
+/* ================= COMPATIBILITÉ ================= */
+
 window.observerAmi = observerAmi;
+window.demarrerPartageGPS = demarrerPartageGPS;
+window.arreterPartageGPS = arreterPartageGPS;
