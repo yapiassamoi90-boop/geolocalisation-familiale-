@@ -1,241 +1,281 @@
-/* ========================================= FAMILLE GPS – DEV.ASSAMOI Feuille de style principale ========================================= */
 
-:root { --primary: #2563eb; --primary-dark: #1746b5; --success: #16a34a; --danger: #dc2626; --background: #f4f7fc; --surface: #ffffff; --text: #172033; --muted: #718096; --border: #e4eaf2; --shadow: 0 8px 28px rgba(25, 45, 85, 0.08); --radius: 18px; }
+:root {
+  --primary: #087f5b;
+  --primary-dark: #066447;
+  --primary-light: #e4f5ee;
+  --accent: #20b486;
+  --success: #15803d;
+  --danger: #dc2626;
+  --background: #eaf7f1;
+  --surface: #ffffff;
+  --text: #17352b;
+  --muted: #718579;
+  --border: #d9ebe2;
+  --shadow: 0 8px 28px rgba(8, 75, 52, 0.08);
+  --radius: 18px;
+}
 
-- { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
 
-body { min-height: 100vh; font-family: Arial, Helvetica, sans-serif; background: var(--background); color: var(--text); line-height: 1.6; }
+body {
+  min-height: 100vh;
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.6;
+}
 
-/* ========================================= BARRE DE NAVIGATION ========================================= */
+button, input { font: inherit; }
+button { cursor: pointer; transition: .2s ease; }
+button:active { transform: scale(.98); }
+.hidden { display: none !important; }
+section { width: 100%; }
 
-.topbar { width: 100%; min-height: 76px; padding: 12px 6%; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 15px; position: sticky; top: 0; z-index: 1000; }
+.topbar {
+  width: 100%;
+  min-height: 72px;
+  padding: 11px 5%;
+  background: rgba(255,255,255,.96);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(12px);
+}
 
 .brand { display: flex; align-items: center; gap: 12px; }
 
-.brand-icon { width: 48px; height: 48px; border-radius: 15px; background: #eaf1ff; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.brand-icon {
+  width: 47px;
+  height: 47px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 25px;
+  box-shadow: 0 5px 15px rgba(8,127,91,.2);
+}
 
-.brand h1 { font-size: 21px; line-height: 1.2; color: var(--primary); }
+.brand h1 { font-size: 21px; line-height: 1.2; color: var(--primary-dark); font-weight: 800; }
+.brand p { font-size: 12px; color: var(--muted); }
 
-.brand p { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+.container { width: min(1160px, 93%); margin: 25px auto 35px; }
+.auth-section { max-width: 540px; margin: 28px auto 55px; }
 
-/* ========================================= STRUCTURE GENERALE ========================================= */
+.section-card, .auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 23px;
+  margin-bottom: 20px;
+}
 
-.container { width: min(1100px, 92%); margin: 30px auto; }
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 19px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
 
-.hidden { display: none !important; }
-
-section { width: 100%; }
-
-/* ========================================= BOUTONS ========================================= */
-
-.btn { border: none; border-radius: 12px; padding: 12px 20px; min-height: 44px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s ease; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
-
-.btn:hover { transform: translateY(-2px); filter: brightness(0.96); }
-
-.btn:active { transform: scale(0.97); }
-
-.btn-primary { background: var(--primary); color: white; }
-
-.btn-success { background: var(--success); color: white; }
-
-.btn-danger { background: var(--danger); color: white; }
-
-.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
-
-.btn-copy { background: #eaf1ff; color: var(--primary); }
-
+.btn:hover { filter: brightness(.97); transform: translateY(-1px); }
+.btn-primary { color: white; background: linear-gradient(135deg, var(--primary), var(--accent)); box-shadow: 0 5px 14px rgba(8,127,91,.18); }
+.btn-success { background: #dcfce7; color: var(--success); }
+.btn-danger { background: #fee2e2; color: #b91c1c; }
+.btn-outline { background: white; border: 1px solid var(--border); color: var(--primary-dark); }
+.btn-copy { background: white; color: var(--primary-dark); border: 1px solid #b7dfce; }
 .full-width { width: 100%; }
 
-/* ========================================= PAGE DE CONNEXION ========================================= */
-
-.auth-section { max-width: 540px; margin: 25px auto 60px; }
-
-.welcome { text-align: center; padding: 20px 10px 28px; }
-
-.welcome-icon { display: inline-flex; width: 70px; height: 70px; border-radius: 22px; background: #eaf1ff; align-items: center; justify-content: center; font-size: 38px; margin-bottom: 15px; }
-
-.welcome h2 { font-size: clamp(23px, 4vw, 30px); line-height: 1.3; margin-bottom: 10px; }
-
+.welcome { text-align: center; padding: 14px 8px 25px; }
+.welcome-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 22px;
+  background: var(--primary-light);
+  font-size: 36px;
+  margin-bottom: 14px;
+}
+.welcome h2 { font-size: clamp(23px, 4vw, 30px); line-height: 1.3; color: var(--primary-dark); margin-bottom: 9px; }
 .welcome p { color: var(--muted); font-size: 14px; }
+.auth-card { padding: 25px; }
 
-.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 25px; }
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  background: #eff7f3;
+  padding: 5px;
+  border-radius: 12px;
+  margin-bottom: 23px;
+}
 
-.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f0f3f9; padding: 5px; border-radius: 12px; margin-bottom: 25px; }
+.tab { border: 0; border-radius: 9px; background: transparent; padding: 11px; color: var(--muted); font-weight: 750; }
+.tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 
-.tab { border: none; border-radius: 9px; background: transparent; padding: 11px; color: var(--muted); font-size: 14px; font-weight: 700; cursor: pointer; }
+form h2 { margin-bottom: 17px; font-size: 21px; }
+label { display: block; margin: 13px 0 6px; font-size: 13px; font-weight: 750; }
 
-.tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+input {
+  width: 100%;
+  min-height: 47px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fbfefc;
+  color: var(--text);
+  outline: none;
+  font-size: 15px;
+}
 
-.auth-card h2 { font-size: 21px; margin-bottom: 20px; }
+input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(8,127,91,.11); }
+form .btn { margin-top: 19px; }
+.form-note { color: var(--muted); font-size: 12px; margin-top: 14px; text-align: center; }
 
-/* ========================================= CHAMPS DE FORMULAIRE ========================================= */
-
-label { display: block; font-size: 13px; font-weight: 700; margin: 14px 0 7px; }
-
-input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px; background: #fbfcff; color: var(--text); font-size: 15px; outline: none; transition: 0.2s; }
-
-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10); }
-
-.auth-card form .btn { margin-top: 22px; }
-
-.form-note { color: var(--muted); font-size: 12px; margin-top: 15px; text-align: center; }
-
-/* ========================================= TABLEAU DE BORD ========================================= */
-
-.dashboard-header { margin: 25px 0; }
-
-.dashboard-header h2 { font-size: clamp(22px, 4vw, 29px); }
-
+.dashboard-header { margin: 20px 0 22px; }
+.dashboard-header h2 { font-size: clamp(22px, 4vw, 29px); color: var(--primary-dark); }
 .dashboard-header p { color: var(--muted); }
+.eyebrow { color: var(--primary) !important; font-size: 11px; font-weight: 850; letter-spacing: 2px; margin-bottom: 5px; }
 
-.eyebrow { color: var(--primary) !important; font-size: 11px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; }
+.profile-card {
+  background: linear-gradient(120deg, #087f5b, #20b486);
+  color: white;
+  padding: 23px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
 
-/* ========================================= CARTE DU NUMERO GPS ========================================= */
+.card-label { font-size: 11px; font-weight: 850; letter-spacing: 1.4px; opacity: .92; }
+.gps-number { font-size: clamp(35px, 7vw, 48px); font-weight: 900; line-height: 1.25; letter-spacing: 2px; margin: 5px 0; }
+.small-text { font-size: 12px; opacity: .92; }
 
-.profile-card { background: linear-gradient(120deg, #2563eb, #4f8df7); color: white; padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 22px; }
-
-.card-label { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: 0.9; }
-
-.gps-number { font-size: clamp(35px, 7vw, 48px); font-weight: 900; line-height: 1.3; margin: 5px 0; }
-
-.small-text { font-size: 12px; opacity: 0.9; }
-
-.profile-card .btn-copy { flex-shrink: 0; }
-
-/* ========================================= CARTES DE SECTIONS ========================================= */
-
-.section-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 23px; margin-bottom: 22px; box-shadow: var(--shadow); }
-
-.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
-
-.section-heading h3 { font-size: 18px; }
-
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.section-heading h3 { font-size: 18px; color: var(--primary-dark); }
 .section-heading p { color: var(--muted); font-size: 13px; }
 
-/* ========================================= STATUT DE PARTAGE ========================================= */
-
-.status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 7px 13px; border-radius: 30px; font-size: 11px; font-weight: 800; white-space: nowrap; }
-
+.status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 7px 12px; border-radius: 30px; font-size: 11px; font-weight: 850; white-space: nowrap; }
 .status-on { background: #dcfce7; color: #15803d; }
-
 .status-off { background: #fee2e2; color: #b91c1c; }
 
-.sharing-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-
-.location-info { background: #f6f8fc; border-radius: 12px; padding: 15px; font-size: 13px; }
-
-.location-info p + p { margin-top: 8px; }
-
-.privacy-note { font-size: 12px; color: var(--muted); margin-top: 15px; }
-
-/* ========================================= RECHERCHE ========================================= */
+.sharing-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 17px; }
+.location-info { background: #f3faf6; border: 1px solid #e0f0e7; border-radius: 12px; padding: 14px; font-size: 13px; }
+.location-info p + p { margin-top: 7px; }
+.privacy-note { margin-top: 14px; padding: 12px; background: #eff8f3; border-left: 4px solid var(--accent); border-radius: 8px; font-size: 12px; color: #526b5e; }
 
 .search-form { display: flex; gap: 10px; }
-
 .search-form input { flex: 1; min-width: 0; }
-
-.search-result { margin-top: 15px; padding: 15px; border-radius: 12px; background: #f3f6fc; font-size: 14px; }
-
-/* ========================================= CARTE LEAFLET ========================================= */
+.search-form .btn { flex-shrink: 0; }
+.search-result { margin-top: 14px; padding: 14px; border-radius: 12px; background: #eff8f3; font-size: 14px; }
 
 .map-card { overflow: hidden; }
-
-.map-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; font-size: 12px; color: var(--muted); }
-
-.map-legend span { display: inline-flex; align-items: center; gap: 7px; }
-
+.map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 13px; font-size: 12px; color: var(--muted); }
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
-
 .legend-dot.red { background: #ef2929; }
-
 .legend-dot.blue { background: #2675ff; }
-
 .legend-dot.green { background: #16a34a; }
 
-#map { width: 100%; height: 430px; border-radius: 14px; border: 1px solid var(--border); z-index: 1; }
+#map {
+  width: 100%;
+  height: 480px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  z-index: 1;
+}
 
-.map-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
-
-/* ========================================= MARQUEURS GPS PERSONNALISES ========================================= */
-
+/* Marqueurs GPS rouge, bleu et vert */
 .gps-marker { width: 19px; height: 19px; border-radius: 50%; border: 3px solid white; display: block; }
+.gps-marker.red { background: #ef2929; box-shadow: 0 0 8px #ef2929, 0 0 17px rgba(239,41,41,.7); animation: redPulse 1.2s infinite; }
+.gps-marker.blue { background: #2675ff; box-shadow: 0 0 9px #2675ff, 0 0 22px rgba(38,117,255,.8); animation: bluePulse 1.5s infinite; }
+.gps-marker.green { background: #16a34a; box-shadow: 0 0 9px #16a34a, 0 0 20px rgba(22,163,74,.7); }
 
-.gps-marker.red { background: #ef2929; box-shadow: 0 0 8px #ef2929, 0 0 17px rgba(239, 41, 41, 0.7); animation: redPulse 1.2s infinite; }
-
-.gps-marker.blue { background: #2675ff; box-shadow: 0 0 9px #2675ff, 0 0 22px rgba(38, 117, 255, 0.8); animation: bluePulse 1.5s infinite; }
-
-.gps-marker.green { background: #16a34a; box-shadow: 0 0 9px #16a34a, 0 0 20px rgba(22, 163, 74, 0.7); }
-
-@keyframes redPulse { 0%, 100% { box-shadow: 0 0 5px #ef2929, 0 0 10px rgba(239, 41, 41, 0.4); } 50% { box-shadow: 0 0 12px #ef2929, 0 0 25px rgba(239, 41, 41, 0.9); } }
-
+@keyframes redPulse {
+  0%, 100% { box-shadow: 0 0 5px #ef2929, 0 0 10px rgba(239,41,41,.4); }
+  50% { box-shadow: 0 0 12px #ef2929, 0 0 25px rgba(239,41,41,.9); }
+}
 @keyframes bluePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
 
-/* ========================================= SECURITE ========================================= */
+.map-note { font-size: 12px; color: var(--muted); margin-top: 11px; }
 
-.security-card { background: #f0f7ff; border-color: #dceaff; }
+#adminSection { border-color: #c8e7d8; background: linear-gradient(180deg, #fff, #f4fbf7); }
+.admin-welcome { padding: 16px; background: #e5f5ed; border-radius: 13px; margin-bottom: 18px; }
+.admin-welcome h4, .admin-stats h4 { color: var(--primary-dark); margin-bottom: 7px; }
+.admin-welcome p, .admin-stats p { color: #526b5e; font-size: 13px; margin-top: 5px; }
+.admin-members-list { margin-top: 14px; padding: 14px; background: white; border: 1px solid var(--border); border-radius: 12px; }
 
-.security-card h3 { margin-bottom: 12px; }
-
-.security-card ul { padding-left: 22px; color: #52627a; font-size: 13px; }
-
+.security-card { background: #f3faf6; border-color: #d4eadf; }
+.security-card h3 { color: var(--primary-dark); margin-bottom: 12px; }
+.security-card ul { padding-left: 21px; color: #526b5e; font-size: 13px; }
 .security-card li + li { margin-top: 7px; }
 
-/* ========================================= MESSAGES ========================================= */
+.message-box {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(90%, 450px);
+  padding: 13px 17px;
+  background: #17352b;
+  color: white;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  z-index: 3000;
+  text-align: center;
+  font-size: 13px;
+}
 
-.message-box { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(90%, 450px); padding: 14px 18px; background: #172033; color: white; border-radius: 12px; box-shadow: var(--shadow); z-index: 2000; text-align: center; font-size: 13px; }
+footer { text-align: center; padding: 23px 15px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); background: white; }
+footer p + p { margin-top: 3px; }
 
-/* ========================================= PIED DE PAGE ========================================= */
-
-footer { text-align: center; padding: 25px 15px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); background: white; }
-
-/* ========================================= ACCESSIBILITE ========================================= */
-
-button:focus-visible, input:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.3); outline-offset: 2px; }
-
-/* ========================================= RESPONSIVE : TELEPHONES ========================================= */
+button:focus-visible, input:focus-visible { outline: 3px solid rgba(8,127,91,.28); outline-offset: 2px; }
 
 @media (max-width: 650px) {
-
-.topbar { padding: 10px 4%; }
-
-.brand h1 { font-size: 18px; }
-
-.container { width: 94%; margin: 18px auto; }
-
-.auth-card { padding: 19px; }
-
-.profile-card { padding: 19px; align-items: flex-start; flex-direction: column; }
-
-.profile-card .btn { width: 100%; }
-
-.section-card { padding: 17px; }
-
-.section-heading { align-items: flex-start; }
-
-.sharing-controls { flex-direction: column; }
-
-.sharing-controls .btn { width: 100%; }
-
-.search-form { flex-direction: column; }
-
-.search-form .btn { width: 100%; }
-
-#map { height: 340px; }
-
-.map-legend { flex-direction: column; gap: 8px; } }
-
-/* ========================================= PETITS ECRANS ========================================= */
+  .topbar { min-height: 65px; padding: 9px 4%; }
+  .brand-icon { width: 42px; height: 42px; border-radius: 13px; font-size: 22px; }
+  .brand h1 { font-size: 18px; }
+  .container { width: 94%; margin: 17px auto 25px; }
+  .auth-section { margin: 18px auto 35px; }
+  .auth-card { padding: 18px; }
+  .welcome { padding: 10px 5px 20px; }
+  .welcome h2 { font-size: 23px; }
+  .section-card { padding: 17px; margin-bottom: 15px; }
+  .dashboard-header { margin: 15px 0 18px; }
+  .profile-card { padding: 19px; align-items: flex-start; flex-direction: column; }
+  .profile-card .btn { width: 100%; }
+  .sharing-controls { flex-direction: column; gap: 9px; }
+  .sharing-controls .btn { width: 100%; }
+  .search-form { flex-direction: column; }
+  .search-form .btn { width: 100%; }
+  .section-heading { align-items: flex-start; }
+  .section-heading h3 { font-size: 17px; }
+  .map-legend { gap: 8px 13px; }
+  #map { height: 390px; }
+}
 
 @media (max-width: 360px) {
-
-.brand-icon { width: 40px; height: 40px; }
-
-.brand h1 { font-size: 16px; }
-
-.btn { padding: 11px 13px; font-size: 13px; }
-
-.section-heading h3 { font-size: 16px; }
-
+  .brand h1 { font-size: 16px; }
+  .brand-icon { width: 39px; height: 39px; }
+  .btn { padding: 10px 12px; font-size: 13px; }
+  .section-heading h3 { font-size: 16px; }
+  #map { height: 350px; }
 }
