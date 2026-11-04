@@ -1,139 +1,106 @@
+
 /* =========================================================
-   FAMILLE LOCALIZER - SERVICE WORKER
+   FAMILLE GPS - SERVICE WORKER
    Dev.Assamoi
    ========================================================= */
 
-const CACHE_NAME = 'famille-localizer-v1';
+const CACHE_NAME = "famille-gps-v2";
 
 const APP_FILES = [
-  './',
-  './index.html',
-  './style.css',
-  './app.js',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
-/* INSTALLATION */
-
-self.addEventListener('install', (event) => {
-
+// INSTALLATION
+self.addEventListener("install", (event) => {
   event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
 
-    caches.open(CACHE_NAME)
+      // Un fichier manquant ne bloque pas toute l'installation.
+      for (const file of APP_FILES) {
+        try {
+          const response = await fetch(file);
 
-      .then((cache) => {
-        return cache.addAll(APP_FILES);
-      })
+          if (response.ok) {
+            await cache.put(file, response);
+          } else {
+            console.warn("Fichier non disponible :", file);
+          }
+        } catch (error) {
+          console.warn("Impossible de mettre en cache :", file);
+        }
+      }
 
-      .then(() => {
-        return self.skipWaiting();
-      })
-
+      await self.skipWaiting();
+    })()
   );
-
 });
 
-/* ACTIVATION */
-
-self.addEventListener('activate', (event) => {
-
+// ACTIVATION
+self.addEventListener("activate", (event) => {
   event.waitUntil(
+    (async () => {
+      const cacheNames = await caches.keys();
 
-    caches.keys()
+      await Promise.all(
+        cacheNames
+          .filter((name) => name.startsWith("famille-gps-") && name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
 
-      .then((cacheNames) => {
-
-        return Promise.all(
-
-          cacheNames
-
-            .filter((name) => name !== CACHE_NAME)
-
-            .map((name) => caches.delete(name))
-
-        );
-
-      })
-
-      .then(() => {
-        return self.clients.claim();
-      })
-
+      await self.clients.claim();
+    })()
   );
-
 });
 
-/* GESTION DES REQUÊTES */
-
-self.addEventListener('fetch', (event) => {
-
+// GESTION DES REQUÊTES
+self.addEventListener("fetch", (event) => {
   const request = event.request;
+
+  if (request.method !== "GET") return;
 
   const url = new URL(request.url);
 
-  // Ne pas intercepter les requêtes qui modifient des données.
-  if (request.method !== 'GET') return;
-
-  // Ne jamais mettre en cache les données Supabase.
-  if (url.hostname.includes('supabase.co')) return;
-
-  // Ne gérer ici que les fichiers du site.
+  // Ne jamais intercepter les données Supabase ou les ressources externes.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
+    (async () => {
+      try {
+        const networkResponse = await fetch(request);
 
-    caches.match(request)
-
-      .then((cachedResponse) => {
-
-        if (cachedResponse) {
-          return cachedResponse;
+        if (networkResponse.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, networkResponse.clone());
         }
 
-        return fetch(request)
+        return networkResponse;
+      } catch (error) {
+        const cachedResponse = await caches.match(request);
 
-          .then((networkResponse) => {
+        if (cachedResponse) return cachedResponse;
 
-            if (
-              networkResponse &&
-              networkResponse.status === 200
-            ) {
-
-              const responseCopy = networkResponse.clone();
-
-              caches.open(CACHE_NAME)
-                .then((cache) => {
-                  cache.put(request, responseCopy);
-                });
-
-            }
-
-            return networkResponse;
-
-          })
-
-          .catch(() => {
-
-            if (request.mode === 'navigate') {
-              return caches.match('./index.html');
-            }
-
-            return new Response(
-              'Contenu indisponible hors connexion.',
-              {
-                status: 503,
-                headers: {
-                  'Content-Type': 'text/plain; charset=utf-8'
-                }
-              }
-            );
-
+        if (request.mode === "navigate") {
+          return (
+            await caches.match("./index.html")
+          ) || new Response("Application indisponible hors connexion.", {
+            status: 503
           });
+        }
 
-      })
-
+        return new Response("Contenu indisponible hors connexion.", {
+          status: 503,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8"
+          }
+        });
+      }
+    })()
   );
-
 });
