@@ -1,287 +1,322 @@
-<!DOCTYPE html><html lang="fr">
+
+<!DOCTYPE html>
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f5f8ff">
+  <meta name="theme-color" content="#2563eb">
   <meta name="description" content="Famille GPS - Partage volontaire et sécurisé de position entre proches.">
-  <title>Famille GPS – Dev.Assamoi</title>  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">  <link
+
+  <title>Famille GPS – Dev.Assamoi</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+
+  <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  <script src="app.js" defer></script></head><body>  <header class="topbar">
-    <div class="brand">
-      <div class="brand-icon">📍</div>
-      <div>
-        <h1>Famille GPS</h1>
-        <p>Dev.Assamoi</p>
-      </div>
-    </div><button id="logoutBtn" class="btn btn-outline hidden" type="button">
-  Déconnexion
-</button>
+  >
 
-  </header>  <main class="container"><!-- PAGE AUTHENTIFICATION -->
-<section id="authSection" class="auth-section">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./app.js" defer></script>
+</head>
 
-  <div class="welcome">
-    <span class="welcome-icon">🌍</span>
-    <h2>Restez proches, où que vous soyez.</h2>
-    <p>
-      Retrouvez vos proches grâce à leur numéro GPS,
-      uniquement lorsqu'ils autorisent le partage de leur position.
-    </p>
-  </div>
+<body>
 
-  <div class="auth-card">
-
-    <div class="auth-tabs">
-      <button id="showLoginBtn" class="tab active" type="button">
-        Connexion
-      </button>
-
-      <button id="showRegisterBtn" class="tab" type="button">
-        Inscription
-      </button>
-    </div>
-
-    <!-- INSCRIPTION -->
-    <form id="registerForm" class="hidden">
-
-      <h2>Créer un compte</h2>
-
-      <label for="registerName">Nom complet</label>
-      <input
-        id="registerName"
-        type="text"
-        placeholder="Exemple : Assamoi Yapi"
-        autocomplete="name"
-        required
-      >
-
-      <label for="registerEmail">Adresse e-mail</label>
-      <input
-        id="registerEmail"
-        type="email"
-        placeholder="exemple@email.com"
-        autocomplete="email"
-        required
-      >
-
-      <label for="registerPassword">Mot de passe</label>
-      <input
-        id="registerPassword"
-        type="password"
-        placeholder="Minimum 8 caractères"
-        autocomplete="new-password"
-        minlength="8"
-        required
-      >
-
-      <button class="btn btn-primary full-width" type="submit">
-        Créer mon compte
-      </button>
-
-      <p class="form-note">
-        Ton numéro GPS personnel sera attribué automatiquement
-        après la création du compte.
-      </p>
-    </form>
-
-    <!-- CONNEXION -->
-    <form id="loginForm">
-
-      <h2>Bienvenue !</h2>
-
-      <label for="loginEmail">Adresse e-mail</label>
-      <input
-        id="loginEmail"
-        type="email"
-        placeholder="Ton adresse e-mail"
-        autocomplete="email"
-        required
-      >
-
-      <label for="loginPassword">Mot de passe</label>
-      <input
-        id="loginPassword"
-        type="password"
-        placeholder="Ton mot de passe"
-        autocomplete="current-password"
-        required
-      >
-
-      <button class="btn btn-primary full-width" type="submit">
-        Se connecter
-      </button>
-
-      <p class="form-note">
-        Tu dois posséder un compte pour utiliser Famille GPS.
-      </p>
-    </form>
-
-  </div>
-</section>
-
-<!-- APPLICATION PRINCIPALE -->
-<section id="appSection" class="hidden">
-
-  <div class="dashboard-header">
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">📍</div>
     <div>
-      <p class="eyebrow">TABLEAU DE BORD</p>
-      <h2>Bonjour, <span id="userName">Utilisateur</span> 👋</h2>
-      <p>Bienvenue dans ton espace Famille GPS.</p>
+      <h1>Famille GPS</h1>
+      <p>Dev.Assamoi</p>
     </div>
   </div>
 
-  <!-- IDENTIFIANT GPS -->
-  <div class="profile-card">
+  <button id="logoutBtn" class="btn btn-outline hidden" type="button">
+    Déconnexion
+  </button>
+</header>
 
-    <div>
-      <p class="card-label">MON NUMÉRO GPS PERSONNEL</p>
-      <div class="gps-number" id="myGpsId">---</div>
-      <p class="small-text">
-        Communique ce numéro uniquement aux personnes de confiance.
+<main class="container">
+
+  <!-- AUTHENTIFICATION -->
+  <section id="authSection" class="auth-section">
+
+    <div class="welcome">
+      <span class="welcome-icon">🌍</span>
+      <h2>Restez proches, où que vous soyez.</h2>
+      <p>
+        Retrouvez vos proches grâce à leur numéro GPS,
+        uniquement lorsqu'ils autorisent le partage de leur position.
       </p>
     </div>
 
-    <button id="copyIdBtn" class="btn btn-copy" type="button">
-      Copier
-    </button>
+    <div class="auth-card">
 
-  </div>
+      <div class="auth-tabs">
+        <button id="showLoginBtn" class="tab active" type="button">
+          Connexion
+        </button>
 
-  <!-- PARTAGE GPS -->
-  <div class="section-card">
-
-    <div class="section-heading">
-      <div>
-        <h3>📡 Mon partage de position</h3>
-        <p>Tu gardes le contrôle de ta localisation.</p>
+        <button id="showRegisterBtn" class="tab" type="button">
+          Inscription
+        </button>
       </div>
 
-      <span id="sharingStatus" class="status-badge status-off">
-        Désactivé
-      </span>
+      <!-- INSCRIPTION -->
+      <form id="registerForm" class="hidden">
+        <h2>Créer un compte</h2>
+
+        <label for="registerName">Nom complet</label>
+        <input
+          id="registerName"
+          type="text"
+          placeholder="Exemple : Assamoi Yapi"
+          autocomplete="name"
+          required
+        >
+
+        <label for="registerEmail">Adresse e-mail</label>
+        <input
+          id="registerEmail"
+          type="email"
+          placeholder="exemple@email.com"
+          autocomplete="email"
+          required
+        >
+
+        <label for="registerPassword">Mot de passe</label>
+        <input
+          id="registerPassword"
+          type="password"
+          placeholder="Minimum 8 caractères"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        >
+
+        <button class="btn btn-primary full-width" type="submit">
+          Créer mon compte
+        </button>
+
+        <p class="form-note">
+          Ton numéro GPS personnel sera attribué automatiquement
+          après la création du compte.
+        </p>
+      </form>
+
+      <!-- CONNEXION -->
+      <form id="loginForm">
+        <h2>Bienvenue !</h2>
+
+        <label for="loginEmail">Adresse e-mail</label>
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="Ton adresse e-mail"
+          autocomplete="email"
+          required
+        >
+
+        <label for="loginPassword">Mot de passe</label>
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Ton mot de passe"
+          autocomplete="current-password"
+          required
+        >
+
+        <button class="btn btn-primary full-width" type="submit">
+          Se connecter
+        </button>
+
+        <p class="form-note">
+          Tu dois posséder un compte pour utiliser Famille GPS.
+        </p>
+      </form>
+
     </div>
+  </section>
 
-    <div class="sharing-controls">
+  <!-- APPLICATION PRINCIPALE -->
+  <section id="appSection" class="hidden">
 
-      <button
-        id="startSharingBtn"
-        class="btn btn-success"
-        type="button"
-      >
-        Activer mon GPS
-      </button>
-
-      <button
-        id="stopSharingBtn"
-        class="btn btn-danger"
-        type="button"
-      >
-        Arrêter le partage
-      </button>
-
-    </div>
-
-    <div class="location-info">
-      <p>📍 Position : <strong id="myLocation">Non disponible</strong></p>
-      <p>🔋 Batterie : <strong id="myBattery">Non disponible</strong></p>
-      <p>🕒 Dernière mise à jour : <strong id="myUpdatedAt">---</strong></p>
-    </div>
-
-    <p class="privacy-note">
-      Lorsque tu désactives le partage, ta position enregistrée
-      n'est plus accessible aux autres membres.
-    </p>
-
-  </div>
-
-  <!-- RECHERCHE PAR NUMERO -->
-  <div class="section-card">
-
-    <div class="section-heading">
+    <div class="dashboard-header">
       <div>
-        <h3>🔎 Retrouver un proche</h3>
-        <p>Entre le numéro GPS de la personne recherchée.</p>
+        <p class="eyebrow">TABLEAU DE BORD</p>
+        <h2>Bonjour, <span id="userName">Utilisateur</span> 👋</h2>
+        <p>Bienvenue dans ton espace Famille GPS.</p>
       </div>
     </div>
 
-    <form id="searchForm" class="search-form">
-
-      <input
-        id="searchGpsId"
-        type="number"
-        min="1"
-        step="1"
-        placeholder="Exemple : 12"
-        required
-      >
-
-      <button class="btn btn-primary" type="submit">
-        Rechercher
-      </button>
-
-    </form>
-
-    <div id="searchResult" class="search-result hidden"></div>
-
-  </div>
-
-  <!-- CARTE -->
-  <div class="section-card map-card">
-
-    <div class="section-heading">
+    <!-- IDENTIFIANT GPS -->
+    <div class="profile-card">
       <div>
-        <h3>🗺️ Carte familiale</h3>
-        <p>Visualise les positions partagées avec toi.</p>
+        <p class="card-label">MON NUMÉRO GPS PERSONNEL</p>
+        <div class="gps-number" id="myGpsId">---</div>
+        <p class="small-text">
+          Communique ce numéro uniquement aux personnes de confiance.
+        </p>
       </div>
+
+      <button id="copyIdBtn" class="btn btn-copy" type="button">
+        Copier
+      </button>
     </div>
 
-    <div class="map-legend">
+    <!-- PARTAGE GPS -->
+    <div class="section-card">
+      <div class="section-heading">
+        <div>
+          <h3>📡 Mon partage de position</h3>
+          <p>Tu gardes le contrôle de ta localisation.</p>
+        </div>
 
-      <span>
-        <i class="legend-dot red"></i>
-        Position disponible
-      </span>
+        <span id="sharingStatus" class="status-badge status-off">
+          Désactivé
+        </span>
+      </div>
 
-      <span>
-        <i class="legend-dot blue"></i>
-        Membre sélectionné
-      </span>
+      <div class="sharing-controls">
+        <button id="startSharingBtn" class="btn btn-success" type="button">
+          Activer mon GPS
+        </button>
 
-      <span>
-        <i class="legend-dot green"></i>
-        Hors partage
-      </span>
+        <button id="stopSharingBtn" class="btn btn-danger" type="button">
+          Arrêter le partage
+        </button>
+      </div>
 
+      <div class="location-info">
+        <p>📍 Position : <strong id="myLocation">Non disponible</strong></p>
+        <p>🔋 Batterie : <strong id="myBattery">Non disponible</strong></p>
+        <p>🕒 Dernière mise à jour : <strong id="myUpdatedAt">---</strong></p>
+      </div>
+
+      <p class="privacy-note">
+        Lorsque tu désactives le partage, ta position enregistrée
+        n'est plus accessible aux autres membres.
+      </p>
     </div>
 
-    <div id="map"></div>
+    <!-- RECHERCHE -->
+    <div class="section-card">
+      <div class="section-heading">
+        <div>
+          <h3>🔎 Retrouver un proche</h3>
+          <p>Entre le numéro GPS de la personne recherchée.</p>
+        </div>
+      </div>
 
-    <p class="map-note">
-      La carte affiche uniquement les positions autorisées.
-    </p>
+      <form id="searchForm" class="search-form">
+        <input
+          id="searchGpsId"
+          type="number"
+          min="1"
+          step="1"
+          placeholder="Exemple : 12"
+          required
+        >
 
-  </div>
+        <button class="btn btn-primary" type="submit">
+          Rechercher
+        </button>
+      </form>
 
-  <!-- SECURITE -->
-  <div class="section-card security-card">
-    <h3>🔐 Confidentialité et sécurité</h3>
-    <ul>
-      <li>Le partage de position est volontaire.</li>
-      <li>Chaque utilisateur possède son propre numéro GPS.</li>
-      <li>La recherche nécessite de connaître le numéro du membre.</li>
-      <li>Tu peux arrêter le partage à tout moment.</li>
-      <li>Les coordonnées ne doivent jamais être accessibles lorsque le partage est désactivé.</li>
-    </ul>
-  </div>
+      <div id="searchResult" class="search-result hidden"></div>
+    </div>
 
-</section>
+    <!-- CARTE -->
+    <div class="section-card map-card">
+      <div class="section-heading">
+        <div>
+          <h3>🗺️ Carte familiale</h3>
+          <p>Visualise les positions partagées avec toi.</p>
+        </div>
+      </div>
 
-<div id="messageBox" class="message-box hidden" role="status"></div>
+      <div class="map-legend">
+        <span><i class="legend-dot red"></i> Position disponible</span>
+        <span><i class="legend-dot blue"></i> Membre sélectionné</span>
+        <span><i class="legend-dot green"></i> Hors partage</span>
+      </div>
 
-  </main>  <footer>
-    <p>Famille GPS © 2026 – Développé par Assamoi Yapi Hyppolite</p>
-    <p>La proximité en toute confiance ❤️</p>
-  </footer></body>
+      <div id="map"></div>
+
+      <p class="map-note">
+        La carte affiche uniquement les positions autorisées.
+      </p>
+    </div>
+
+    <!-- ESPACE ADMINISTRATEUR -->
+    <section id="adminSection" class="section-card hidden">
+
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">GESTION PRIVÉE</p>
+          <h3>🛡️ Administration Famille GPS</h3>
+          <p>Espace réservé à l'administrateur principal.</p>
+        </div>
+
+        <span class="status-badge status-on">Administrateur</span>
+      </div>
+
+      <div class="admin-welcome">
+        <h4>Bienvenue dans l'administration</h4>
+        <p>
+          Tu peux gérer les comptes des membres et contrôler
+          les suppressions autorisées.
+        </p>
+        <p>
+          <strong>Administrateur :</strong>
+          yapiassamoi90@gmail.com
+        </p>
+      </div>
+
+      <div class="admin-stats">
+        <h4>👥 Gestion des membres</h4>
+        <p>Liste des membres inscrits sur Famille GPS.</p>
+      </div>
+
+      <div id="adminMembersList" class="admin-members-list">
+        <p>La liste des membres sera chargée ici.</p>
+      </div>
+
+      <p class="privacy-note">
+        Seul l'administrateur autorisé pourra supprimer un compte.
+        La suppression devra être vérifiée et exécutée côté serveur.
+      </p>
+
+    </section>
+
+    <!-- SÉCURITÉ -->
+    <div class="section-card security-card">
+      <h3>🔐 Confidentialité et sécurité</h3>
+
+      <ul>
+        <li>Le partage de position est volontaire.</li>
+        <li>Chaque utilisateur possède son propre numéro GPS.</li>
+        <li>La recherche nécessite de connaître le numéro du membre.</li>
+        <li>Tu peux arrêter le partage à tout moment.</li>
+        <li>Les coordonnées ne doivent jamais être accessibles lorsque le partage est désactivé.</li>
+        <li>La suppression des membres est réservée à l'administrateur.</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <div id="messageBox" class="message-box hidden" role="status"></div>
+
+</main>
+
+<footer>
+  <p>Famille GPS © 2026 – Développé par Assamoi Yapi Hyppolite</p>
+  <p>La proximité en toute confiance ❤️</p>
+</footer>
+
+</body>
 </html>
