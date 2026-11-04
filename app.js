@@ -1,4 +1,3 @@
-
 /* =========================================================
    FAMILLE GPS - Dev.Assamoi
    Supabase + Leaflet + Firebase Cloud Messaging
@@ -16,7 +15,7 @@ const SUPABASE_KEY = 'sb_publishable_sSgPsSwF436uHqtqgF9ytw_RKqqwIjt';
 const REFRESH_INTERVAL = 10000;
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBsIPIeReKjRaDsSMUWc4E1deGMfq6e5ZI",
+  apiKey: "AIzaSyBsIPIeKjRaDsSMUWc4E1deGMfq6e5ZI",
   authDomain: "relais-celebrations-bot.firebaseapp.com",
   projectId: "relais-celebrations-bot",
   storageBucket: "relais-celebrations-bot.firebasestorage.app",
@@ -192,7 +191,6 @@ function initialiserFirebaseMessaging() {
     });
 
     console.log('Firebase Messaging initialisé.');
-
     return true;
 
   } catch (error) {
@@ -339,9 +337,7 @@ async function activerNotifications() {
     if (saveError) throw saveError;
 
     if (notificationButton) {
-      notificationButton.textContent =
-        'Notifications activées';
-
+      notificationButton.textContent = 'Notifications activées';
       notificationButton.disabled = false;
     }
 
@@ -473,7 +469,6 @@ async function inscrireUtilisateur(event) {
 
     } else {
       registerForm?.reset();
-
       afficherFormulaire('login');
 
       if (loginEmail) {
@@ -573,16 +568,6 @@ async function chargerProfil(user) {
     const { data: authData, error: authError } =
       await db.auth.getUser();
 
-    console.log(
-      '[Famille GPS] Utilisateur authentifié :',
-      authData?.user?.id || null
-    );
-
-    console.log(
-      '[Famille GPS] UUID utilisateur attendu :',
-      user.id
-    );
-
     if (authError || !authData?.user) {
       throw authError || new Error(
         'Utilisateur non authentifié.'
@@ -610,12 +595,7 @@ async function chargerProfil(user) {
       .single();
 
     if (error) {
-      console.error('[Famille GPS] Erreur profil :', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+      console.error('[Famille GPS] Erreur profil :', error);
 
       if (error.code === 'PGRST116') {
         throw new Error(
@@ -632,8 +612,6 @@ async function chargerProfil(user) {
       );
     }
 
-    console.log('[Famille GPS] Profil chargé :', data);
-
     myProfile = data;
 
     if (userName) {
@@ -645,7 +623,6 @@ async function chargerProfil(user) {
     }
 
     afficherApplication();
-
     actualiserStatutPartage();
     actualiserInformationsProfil();
 
@@ -704,7 +681,7 @@ function actualiserStatutPartage() {
   }
 }
 
-/* ================= CARTE LEAFLET ================= */
+/* ================= CARTE LEAFLET AMÉLIORÉE ================= */
 
 function initialiserCarte() {
   const element = $('map');
@@ -721,7 +698,18 @@ function initialiserCarte() {
     return;
   }
 
-  map = L.map('map').setView([5.36, -4.0083], 12);
+  map = L.map('map', {
+    center: [5.36, -4.0083],
+    zoom: 13,
+    minZoom: 3,
+    maxZoom: 19,
+    zoomControl: true,
+    scrollWheelZoom: true,
+    doubleClickZoom: true,
+    touchZoom: true,
+    zoomSnap: 0.5,
+    zoomDelta: 1
+  });
 
   const carteClassique = L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -734,28 +722,33 @@ function initialiserCarte() {
   const carteSatellite = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     {
-      attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics et contributeurs',
+      attribution:
+        'Imagery &copy; Esri, Maxar, Earthstar Geographics',
       maxZoom: 19
     }
   );
 
   carteClassique.addTo(map);
 
-  const couches = {
-    'Plan classique': carteClassique,
-    'Vue satellite': carteSatellite
-  };
-
   L.control.layers(
-    couches,
+    {
+      '🗺️ Carte des rues': carteClassique,
+      '🛰️ Vue satellite': carteSatellite
+    },
     null,
     {
       position: 'topright',
-      collapsed: false
+      collapsed: true
     }
   ).addTo(map);
 
-  console.log('Carte familiale initialisée.');
+  L.control.scale({
+    position: 'bottomleft',
+    metric: true,
+    imperial: false
+  }).addTo(map);
+
+  console.log('Carte familiale améliorée initialisée.');
 }
 
 /* ================= ICÔNES GPS ================= */
@@ -795,13 +788,16 @@ function afficherMaPosition(latitude, longitude) {
 
   if (markers.me) {
     markers.me.setLatLng(position);
-
   } else {
     markers.me = L.marker(position, {
       icon: creerIconeGPS('red')
     })
       .addTo(map)
       .bindPopup('Ma position');
+  }
+
+  if (!map.hasLayer(markers.me)) {
+    markers.me.addTo(map);
   }
 
   map.setView(position, 15);
@@ -1232,14 +1228,13 @@ function afficherBoutonAlerte(memberId) {
   alertButton.style.borderRadius = '8px';
   alertButton.style.cursor = 'pointer';
 
-  alertButton.addEventListener('click', () => {
-    envoyerAlerteGPS(memberId, alertButton);
+  const button = alertButton;
+
+  button.addEventListener('click', () => {
+    envoyerAlerteGPS(memberId, button);
   });
 
-  searchResult.insertAdjacentElement(
-    'afterend',
-    alertButton
-  );
+  searchResult.insertAdjacentElement('afterend', button);
 }
 
 /* ================= ENVOYER UNE ALERTE ================= */
@@ -1277,7 +1272,6 @@ async function envoyerAlerteGPS(memberId, button) {
   }
 
   try {
-    // Vérifier à nouveau le partage avant l'envoi.
     const member = await rechercherMembre(id);
 
     if (!member) {
@@ -1357,6 +1351,7 @@ async function observerAmi(event) {
   event?.preventDefault();
 
   supprimerBoutonAlerte();
+  arreterActualisationRecherche();
 
   if (!currentUser) {
     afficherResultat(
@@ -1384,8 +1379,6 @@ async function observerAmi(event) {
     const member = await rechercherMembre(targetId);
 
     if (!member) {
-      arreterActualisationRecherche();
-
       afficherResultat(
         'Aucun membre trouvé avec cet identifiant.',
         'warning'
@@ -1393,19 +1386,13 @@ async function observerAmi(event) {
       return;
     }
 
-    if (
-      Number(member.id) === Number(myProfile?.id)
-    ) {
-      arreterActualisationRecherche();
-
+    if (Number(member.id) === Number(myProfile?.id)) {
       afficherResultat(
         'Il s’agit de ton propre identifiant GPS.',
         'info'
       );
       return;
     }
-
-    arreterActualisationRecherche();
 
     currentTargetId = String(member.id);
 
@@ -1425,16 +1412,16 @@ async function observerAmi(event) {
       member.latitude == null ||
       member.longitude == null
     ) {
-      demarrerActualisationRecherche();
-
       afficherResultat(
         `${member.name || 'Ce membre'} a activé le partage, mais aucune position n'est encore disponible.`,
         'warning'
       );
+
+      demarrerActualisationRecherche();
       return;
     }
 
-    afficherPositionMembre(member);
+    afficherPositionMembre(member, true);
 
     afficherResultat(
       `Position partagée de ${member.name || 'ce membre'}. Actualisation toutes les 10 secondes lorsque l'application est active.`,
@@ -1460,7 +1447,7 @@ async function observerAmi(event) {
 
 /* ================= POSITION D'UN MEMBRE ================= */
 
-function afficherPositionMembre(member) {
+function afficherPositionMembre(member, centrer = false) {
   if (
     member.latitude == null ||
     member.longitude == null
@@ -1495,7 +1482,6 @@ function afficherPositionMembre(member) {
 
   if (markers[id]) {
     markers[id].setLatLng(position);
-
   } else {
     markers[id] = L.marker(position, {
       icon: creerIconeGPS('blue')
@@ -1506,15 +1492,23 @@ function afficherPositionMembre(member) {
 
   const name = document.createElement('strong');
   const idLine = document.createElement('div');
+  const updatedLine = document.createElement('div');
 
   name.textContent = member.name || 'Membre';
   idLine.textContent = `ID GPS : ${member.id}`;
 
-  popup.append(name, idLine);
+  updatedLine.textContent = member.updated_at
+    ? `Mise à jour : ${new Date(member.updated_at).toLocaleString('fr-FR')}`
+    : 'Mise à jour inconnue';
+
+  popup.append(name, idLine, updatedLine);
 
   markers[id].bindPopup(popup);
 
-  map.setView(position, 15);
+  // Centrer uniquement lors de la première recherche.
+  if (centrer) {
+    map.setView(position, 15);
+  }
 }
 
 /* ================= SUPPRIMER MARQUEUR ================= */
@@ -1584,7 +1578,8 @@ function demarrerActualisationRecherche() {
         return;
       }
 
-      afficherPositionMembre(member);
+      // Mise à jour du marqueur sans déplacer la carte.
+      afficherPositionMembre(member, false);
 
     } catch (error) {
       console.error('Actualisation recherche :', error);
@@ -1753,7 +1748,6 @@ async function restaurerSession() {
 
     if (data.session?.user) {
       await chargerProfil(data.session.user);
-
     } else {
       afficherConnexion();
       afficherFormulaire('login');
