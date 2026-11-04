@@ -1,8 +1,7 @@
 
 /* =========================================================
    FAMILLE GPS - SERVICE WORKER
-   Dev.Assamoi
-   PWA + Cache + Notifications Firebase
+   PWA + CACHE + NOTIFICATIONS FIREBASE
    ========================================================= */
 
 importScripts(
@@ -10,7 +9,7 @@ importScripts(
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"
 );
 
-const CACHE_NAME = "famille-gps-v3";
+const CACHE_NAME = "famille-gps-v4";
 
 const APP_FILES = [
   "./",
@@ -22,7 +21,6 @@ const APP_FILES = [
   "./icon-512.png"
 ];
 
-// Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBsIPIeReKjRaDsSMUWc4E1deGMfq6e5ZI",
   authDomain: "relais-celebrations-bot.firebaseapp.com",
@@ -32,13 +30,12 @@ const firebaseConfig = {
   appId: "1:773823361651:web:9bbb40ae3daa8d82397006"
 };
 
-// Initialisation Firebase
 firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
 // INSTALLATION
-self.addEventListener("install", (event) => {
+self.addEventListener("install", event => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
@@ -61,19 +58,18 @@ self.addEventListener("install", (event) => {
 });
 
 // ACTIVATION
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", event => {
   event.waitUntil(
     (async () => {
       const cacheNames = await caches.keys();
 
       await Promise.all(
         cacheNames
-          .filter(
-            (name) =>
-              name.startsWith("famille-gps-") &&
-              name !== CACHE_NAME
+          .filter(name =>
+            name.startsWith("famille-gps-") &&
+            name !== CACHE_NAME
           )
-          .map((name) => caches.delete(name))
+          .map(name => caches.delete(name))
       );
 
       await self.clients.claim();
@@ -81,10 +77,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// NOTIFICATIONS REÇUES EN ARRIÈRE-PLAN
-messaging.onBackgroundMessage((payload) => {
-  const title =
-    payload.data?.title || "Famille GPS";
+// NOTIFICATIONS EN ARRIÈRE-PLAN
+messaging.onBackgroundMessage(payload => {
+  const title = payload.data?.title || "Famille GPS";
 
   const options = {
     body:
@@ -93,17 +88,17 @@ messaging.onBackgroundMessage((payload) => {
     icon: "./icon-192.png",
     badge: "./icon-192.png",
     vibrate: [300, 100, 300],
+    tag: "famille-gps-alert",
     data: {
       url: payload.data?.url || "./"
-    },
-    tag: "famille-gps-alert"
+    }
   };
 
   return self.registration.showNotification(title, options);
 });
 
 // CLIC SUR UNE NOTIFICATION
-self.addEventListener("notificationclick", (event) => {
+self.addEventListener("notificationclick", event => {
   event.notification.close();
 
   const targetUrl = new URL(
@@ -130,15 +125,15 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// GESTION DES REQUÊTES
-self.addEventListener("fetch", (event) => {
+// REQUÊTES ET MODE HORS CONNEXION
+self.addEventListener("fetch", event => {
   const request = event.request;
 
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
 
-  // Ne pas intercepter les ressources externes ou Supabase.
+  // Ne pas intercepter les services externes.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
@@ -152,10 +147,13 @@ self.addEventListener("fetch", (event) => {
         }
 
         return networkResponse;
+
       } catch (error) {
         const cachedResponse = await caches.match(request);
 
-        if (cachedResponse) return cachedResponse;
+        if (cachedResponse) {
+          return cachedResponse;
+        }
 
         if (request.mode === "navigate") {
           return (
