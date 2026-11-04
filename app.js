@@ -1,8 +1,9 @@
 
 /* =========================================================
    FAMILLE GPS - Dev.Assamoi
-   Supabase + Leaflet + GPS volontaire
-   Carte classique + Vue satellite
+   Supabase + Leaflet + Firebase Cloud Messaging
+   GPS volontaire - Carte classique + Vue satellite
+   Alertes aux membres qui désactivent leur partage GPS
    ========================================================= */
 
 'use strict';
@@ -13,6 +14,18 @@ const SUPABASE_URL = 'https://qcdxsafopgihmdwudayb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sSgPsSwF436uHqtqgF9ytw_RKqqwIjt';
 
 const REFRESH_INTERVAL = 10000;
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBsIPIeReKjRaDsSMUWc4E1deGMfq6e5ZI",
+  authDomain: "relais-celebrations-bot.firebaseapp.com",
+  projectId: "relais-celebrations-bot",
+  storageBucket: "relais-celebrations-bot.firebasestorage.app",
+  messagingSenderId: "773823361651",
+  appId: "1:773823361651:web:9bbb40ae3daa8d82397006"
+};
+
+const FIREBASE_VAPID_KEY =
+  "BKBW_3EQ9spdbvNmuLdA3qgGCridzpHVPpGByjGnaB-OstumZwNKxXtTQjyD6zztvTGBsRxWFcR6kEHdp7IJjG8";
 
 const GPS_OPTIONS = {
   enableHighAccuracy: true,
@@ -39,6 +52,12 @@ let locationInFlight = false;
 
 let messageTimeout = null;
 let batteryObject = null;
+
+let firebaseMessaging = null;
+let familleServiceWorker = null;
+
+let notificationButton = null;
+let alertButton = null;
 
 /* ================= ÉLÉMENTS HTML ================= */
 
@@ -137,6 +156,217 @@ function afficherResultat(message, type = 'info') {
   searchResult.classList.remove('hidden');
 }
 
+/* ================= FIREBASE MESSAGING ================= */
+
+function initialiserFirebaseMessaging() {
+  try {
+    if (
+      !window.firebase ||
+      !firebase.apps ||
+      typeof firebase.messaging !== 'function'
+    ) {
+      console.warn('Firebase Messaging indisponible.');
+      return false;
+    }
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+
+    firebaseMessaging = firebase.messaging();
+
+    firebaseMessaging.onMessage(payload => {
+      console.log(
+        'Notification reçue au premier plan :',
+        payload
+      );
+
+      const title =
+        payload.notification?.title || 'Famille GPS';
+
+      const body =
+        payload.notification?.body ||
+        'Un proche souhaite te retrouver.';
+
+      afficherMessage(`${title} : ${body}`, 'info');
+    });
+
+    console.log('Firebase Messaging initialisé.');
+
+    return true;
+
+  } catch (error) {
+    console.error('Initialisation Firebase :', error);
+    return false;
+  }
+}
+
+/* ================= BOUTON NOTIFICATIONS ================= */
+
+function creerBoutonNotifications() {
+  if (!appSection || notificationButton) return;
+
+  notificationButton = document.createElement('button');
+
+  notificationButton.type = 'button';
+  notificationButton.id = 'enableNotificationsBtn';
+  notificationButton.textContent = 'Activer les notifications';
+
+  notificationButton.style.margin = '10px 0';
+  notificationButton.style.padding = '12px 18px';
+  notificationButton.style.borderRadius = '8px';
+  notificationButton.style.cursor = 'pointer';
+
+  notificationButton.addEventListener(
+    'click',
+    activerNotifications
+  );
+
+  const container = sharingStatus?.parentElement || appSection;
+
+  container.appendChild(notificationButton);
+}
+
+/* ================= ACTIVER NOTIFICATIONS ================= */
+
+async function activerNotifications() {
+  if (!currentUser || !db) {
+    afficherMessage(
+      'Connecte-toi avant d’activer les notifications.',
+      'warning'
+    );
+    return;
+  }
+
+  if (!('Notification' in window)) {
+    afficherMessage(
+      'Ton navigateur ne prend pas en charge les notifications.',
+      'error'
+    );
+    return;
+  }
+
+  if (!('serviceWorker' in navigator)) {
+    afficherMessage(
+      'Le Service Worker n’est pas disponible.',
+      'error'
+    );
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    afficherMessage(
+      'Les notifications nécessitent une connexion HTTPS.',
+      'error'
+    );
+    return;
+  }
+
+  if (!firebaseMessaging && !initialiserFirebaseMessaging()) {
+    afficherMessage(
+      'Firebase Messaging n’a pas pu être initialisé.',
+      'error'
+    );
+    return;
+  }
+
+  if (notificationButton) {
+    notificationButton.disabled = true;
+    notificationButton.textContent = 'Activation en cours...';
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== 'granted') {
+      throw new Error(
+        'Autorisation des notifications refusée.'
+      );
+    }
+
+    if (!familleServiceWorker) {
+      familleServiceWorker =
+        await navigator.serviceWorker.register(
+          './service-worker.js'
+        );
+    }
+
+    await navigator.serviceWorker.ready;
+
+    const token = await firebaseMessaging.getToken({
+      vapidKey: FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: familleServiceWorker
+    });
+
+    if (!token) {
+      throw new Error(
+        'Firebase n’a pas fourni de jeton pour cet appareil.'
+      );
+    }
+
+    const {
+      data: sessionData,
+      error: sessionError
+    } = await db.auth.getSession();
+
+    if (sessionError) throw sessionError;
+
+    const authenticatedUser = sessionData.session?.user;
+
+    if (
+      !authenticatedUser ||
+      authenticatedUser.id !== currentUser.id
+    ) {
+      throw new Error(
+        'Session utilisateur invalide. Reconnecte-toi.'
+      );
+    }
+
+    const { error: saveError } = await db
+      .from('family_device_tokens')
+      .upsert(
+        {
+          auth_user_id: authenticatedUser.id,
+          fcm_token: token,
+          platform: 'web',
+          updated_at: new Date().toISOString()
+        },
+        {
+          onConflict: 'fcm_token'
+        }
+      );
+
+    if (saveError) throw saveError;
+
+    if (notificationButton) {
+      notificationButton.textContent =
+        'Notifications activées';
+
+      notificationButton.disabled = false;
+    }
+
+    afficherMessage(
+      'Notifications activées sur cet appareil !',
+      'success'
+    );
+
+  } catch (error) {
+    console.error('Activation notifications :', error);
+
+    if (notificationButton) {
+      notificationButton.disabled = false;
+      notificationButton.textContent =
+        'Réessayer d’activer les notifications';
+    }
+
+    afficherMessage(
+      'Impossible d’activer les notifications : ' +
+      error.message,
+      'error'
+    );
+  }
+}
+
 /* ================= FORMULAIRES ================= */
 
 function afficherFormulaire(type) {
@@ -168,6 +398,7 @@ function afficherConnexion() {
 
   arreterActualisationRecherche();
   arreterSuiviLocal();
+  supprimerBoutonAlerte();
 
   actualiserStatutPartage();
 }
@@ -176,6 +407,8 @@ function afficherApplication() {
   authSection?.classList.add('hidden');
   appSection?.classList.remove('hidden');
   logoutBtn?.classList.remove('hidden');
+
+  creerBoutonNotifications();
 
   setTimeout(() => {
     initialiserCarte();
@@ -488,10 +721,8 @@ function initialiserCarte() {
     return;
   }
 
-  // Création de la carte centrée sur Abidjan.
   map = L.map('map').setView([5.36, -4.0083], 12);
 
-  // MODE 1 : CARTE CLASSIQUE
   const carteClassique = L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     {
@@ -500,7 +731,6 @@ function initialiserCarte() {
     }
   );
 
-  // MODE 2 : VUE SATELLITE
   const carteSatellite = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     {
@@ -509,10 +739,8 @@ function initialiserCarte() {
     }
   );
 
-  // La carte classique est affichée au départ.
   carteClassique.addTo(map);
 
-  // Sélecteur des modes de carte.
   const couches = {
     'Plan classique': carteClassique,
     'Vue satellite': carteSatellite
@@ -980,10 +1208,155 @@ async function rechercherMembre(memberId) {
   };
 }
 
+/* ================= BOUTON ALERTE ================= */
+
+function supprimerBoutonAlerte() {
+  if (alertButton) {
+    alertButton.remove();
+    alertButton = null;
+  }
+}
+
+function afficherBoutonAlerte(memberId) {
+  if (!searchResult) return;
+
+  supprimerBoutonAlerte();
+
+  alertButton = document.createElement('button');
+  alertButton.type = 'button';
+  alertButton.id = 'sendGpsAlertBtn';
+  alertButton.textContent = 'Envoyer une alerte';
+
+  alertButton.style.marginTop = '10px';
+  alertButton.style.padding = '12px 18px';
+  alertButton.style.borderRadius = '8px';
+  alertButton.style.cursor = 'pointer';
+
+  alertButton.addEventListener('click', () => {
+    envoyerAlerteGPS(memberId, alertButton);
+  });
+
+  searchResult.insertAdjacentElement(
+    'afterend',
+    alertButton
+  );
+}
+
+/* ================= ENVOYER UNE ALERTE ================= */
+
+async function envoyerAlerteGPS(memberId, button) {
+  if (!currentUser || !db) {
+    afficherResultat(
+      'Connecte-toi pour envoyer une alerte.',
+      'error'
+    );
+    return;
+  }
+
+  const id = Number(memberId);
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    afficherResultat(
+      'Identifiant du membre invalide.',
+      'error'
+    );
+    return;
+  }
+
+  if (Number(id) === Number(myProfile?.id)) {
+    afficherResultat(
+      'Tu ne peux pas t’envoyer une alerte à toi-même.',
+      'warning'
+    );
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Envoi en cours...';
+  }
+
+  try {
+    // Vérifier à nouveau le partage avant l'envoi.
+    const member = await rechercherMembre(id);
+
+    if (!member) {
+      throw new Error('Membre introuvable.');
+    }
+
+    if (member.share_enabled) {
+      supprimerBoutonAlerte();
+
+      afficherResultat(
+        'Ce membre a maintenant activé son partage GPS.',
+        'success'
+      );
+
+      return;
+    }
+
+    const {
+      data: sessionData,
+      error: sessionError
+    } = await db.auth.getSession();
+
+    if (sessionError) throw sessionError;
+
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      throw new Error('Session expirée. Reconnecte-toi.');
+    }
+
+    const response = await fetch('/api/send-alert', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        targetMemberId: id
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || 'L’envoi de l’alerte a échoué.'
+      );
+    }
+
+    afficherResultat(
+      'Alerte envoyée ! Le membre recevra une notification si son appareil est joignable.',
+      'success'
+    );
+
+    if (button) {
+      button.textContent = 'Alerte envoyée';
+    }
+
+  } catch (error) {
+    console.error('Envoi alerte GPS :', error);
+
+    afficherResultat(
+      error.message || 'Impossible d’envoyer l’alerte.',
+      'error'
+    );
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Renvoyer une alerte';
+    }
+  }
+}
+
 /* ================= FORMULAIRE RECHERCHE ================= */
 
 async function observerAmi(event) {
   event?.preventDefault();
+
+  supprimerBoutonAlerte();
 
   if (!currentUser) {
     afficherResultat(
@@ -1038,12 +1411,13 @@ async function observerAmi(event) {
 
     if (!member.share_enabled) {
       supprimerMarqueurRecherche(currentTargetId);
-      currentTargetId = null;
 
       afficherResultat(
         `${member.name || 'Ce membre'} ne partage pas actuellement sa position.`,
         'warning'
       );
+
+      afficherBoutonAlerte(member.id);
       return;
     }
 
@@ -1169,16 +1543,33 @@ function demarrerActualisationRecherche() {
 
       if (currentTargetId !== id) return;
 
-      if (!member || !member.share_enabled) {
+      if (!member) {
         supprimerMarqueurRecherche(id);
         arreterActualisationRecherche();
+
+        afficherResultat(
+          'Ce membre est introuvable.',
+          'warning'
+        );
+
+        supprimerBoutonAlerte();
+        return;
+      }
+
+      if (!member.share_enabled) {
+        supprimerMarqueurRecherche(id);
+        arreterActualisationRecherche(false);
 
         afficherResultat(
           'Ce membre ne partage plus sa position.',
           'warning'
         );
+
+        afficherBoutonAlerte(member.id);
         return;
       }
+
+      supprimerBoutonAlerte();
 
       if (
         member.latitude == null ||
@@ -1276,6 +1667,7 @@ async function deconnecterUtilisateur() {
   }
 
   arreterActualisationRecherche();
+  supprimerBoutonAlerte();
 
   try {
     const { error } = await db.auth.signOut();
@@ -1389,6 +1781,7 @@ if (db) {
 
       arreterSuiviLocal();
       arreterActualisationRecherche();
+      supprimerBoutonAlerte();
 
       afficherConnexion();
       afficherFormulaire('login');
@@ -1407,9 +1800,12 @@ async function enregistrerServiceWorker() {
   }
 
   try {
-    await navigator.serviceWorker.register(
-      './service-worker.js'
-    );
+    familleServiceWorker =
+      await navigator.serviceWorker.register(
+        './service-worker.js'
+      );
+
+    await navigator.serviceWorker.ready;
 
     console.log('Service Worker activé.');
 
@@ -1423,9 +1819,11 @@ async function enregistrerServiceWorker() {
 async function demarrerApplication() {
   afficherFormulaire('login');
 
-  await restaurerSession();
+  await enregistrerServiceWorker();
 
-  enregistrerServiceWorker();
+  initialiserFirebaseMessaging();
+
+  await restaurerSession();
 
   obtenirBatterie();
 
@@ -1449,3 +1847,5 @@ if (document.readyState === 'loading') {
 window.observerAmi = observerAmi;
 window.demarrerPartageGPS = demarrerPartageGPS;
 window.arreterPartageGPS = arreterPartageGPS;
+window.activerNotifications = activerNotifications;
+window.envoyerAlerteGPS = envoyerAlerteGPS;
