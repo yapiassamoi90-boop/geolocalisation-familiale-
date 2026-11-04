@@ -1,4 +1,5 @@
 
+
 import { createClient } from "@supabase/supabase-js";
 import {
   initializeApp,
@@ -59,6 +60,13 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (
+      !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      !process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    ) {
+      throw new Error("Configuration serveur incomplète.");
+    }
+
     const authorization = req.headers.authorization || "";
     const accessToken = authorization.startsWith("Bearer ")
       ? authorization.slice(7)
@@ -71,7 +79,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Vérifier l'identité de l'expéditeur avec Supabase Auth.
     const {
       data: { user },
       error: authError
@@ -96,7 +103,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Vérifier que l'expéditeur possède bien un profil familial.
     const { data: sender, error: senderError } = await adminDb
       .from("family_users")
       .select("id, auth_user_id")
@@ -110,7 +116,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Récupérer le membre ciblé.
     const { data: target, error: targetError } = await adminDb
       .from("family_users")
       .select("id, name, auth_user_id, share_enabled")
@@ -138,8 +143,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Limiter les alertes répétées : une alerte par minute
-    // pour un même expéditeur et un même destinataire.
     const oneMinuteAgo = new Date(
       Date.now() - 60 * 1000
     ).toISOString();
@@ -154,6 +157,7 @@ export default async function handler(req, res) {
 
     if (recentError) {
       console.error("Erreur vérification alertes :", recentError);
+
       return res.status(500).json({
         success: false,
         message: "Impossible de vérifier les dernières alertes."
@@ -167,15 +171,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // Récupérer les appareils sur lesquels le membre
-    // a accepté les notifications.
     const { data: devices, error: devicesError } = await adminDb
       .from("family_device_tokens")
       .select("id, fcm_token")
       .eq("auth_user_id", target.auth_user_id);
 
     if (devicesError) {
-      console.error("Erreur récupération appareils :", devicesError);
+      console.error("Erreur appareils :", devicesError);
+
       return res.status(500).json({
         success: false,
         message: "Impossible de récupérer les appareils."
@@ -185,11 +188,10 @@ export default async function handler(req, res) {
     if (!devices?.length) {
       return res.status(404).json({
         success: false,
-        message: "Ce membre n'a pas encore activé les notifications sur son appareil."
+        message: "Ce membre n'a pas encore activé les notifications."
       });
     }
 
-    // Enregistrer l'alerte avant l'envoi.
     const { error: logError } = await adminDb
       .from("family_alert_logs")
       .insert({
@@ -199,6 +201,7 @@ export default async function handler(req, res) {
 
     if (logError) {
       console.error("Erreur enregistrement alerte :", logError);
+
       return res.status(500).json({
         success: false,
         message: "Impossible d'enregistrer l'alerte."
@@ -208,32 +211,22 @@ export default async function handler(req, res) {
     const messaging = getFirebaseMessaging();
     const tokens = devices.map(device => device.fcm_token);
 
-    // Envoyer une notification générique : aucune position GPS
-    // ni coordonnée n'est transmise.
+    // Message data-only : le service worker affiche la notification.
     const result = await messaging.sendEachForMulticast({
       tokens,
-      notification: {
-        title: "Famille GPS",
-        body: "Un proche souhaite te retrouver. Ouvre Famille GPS pour choisir si tu veux activer le partage de position."
-      },
       data: {
         type: "gps_sharing_request",
+        title: "Famille GPS",
+        body: "Un proche souhaite te retrouver. Ouvre Famille GPS pour choisir si tu veux activer le partage de position.",
         url: "/"
       },
       webpush: {
-        fcmOptions: {
-          link: "/"
-        },
-        notification: {
-          icon: "/icon-192.png",
-          badge: "/icon-192.png",
-          tag: "famille-gps-alert",
-          requireInteraction: true
+        headers: {
+          Urgency: "high"
         }
       }
     });
 
-    // Nettoyer les jetons qui ne sont plus valides.
     const invalidTokens = [];
 
     result.responses.forEach((response, index) => {
