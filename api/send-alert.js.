@@ -1,1 +1,279 @@
 
+import { createClient } from "@supabase/supabase-js";
+import {
+  initializeApp,
+  cert,
+  getApps
+} from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
+
+const SUPABASE_URL = "https://qcdxsafopgihmdwudayb.supabase.co";
+const SUPABASE_ANON_KEY =
+  "sb_publishable_sSgPsSwF436uHqtqgF9ytw_RKqqwIjt";
+
+const adminDb = createClient(
+  SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const authDb = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
+);
+
+function getFirebaseMessaging() {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON manquant.");
+  }
+
+  if (!getApps().length) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    );
+
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key =
+        serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount)
+    });
+  }
+
+  return getMessaging();
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      success: false,
+      message: "Méthode non autorisée."
+    });
+  }
+
+  try {
+    const authorization = req.headers.authorization || "";
+    const accessToken = authorization.startsWith("Bearer ")
+      ? authorization.slice(7)
+      : null;
+
+    if (!accessToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Connexion requise."
+      });
+    }
+
+    // Vérifier l'identité de l'expéditeur avec Supabase Auth.
+    const {
+      data: { user },
+      error: authError
+    } = await authDb.auth.getUser(accessToken);
+
+    if (authError || !user) {
+      return res.status(401).json({
+        success: false,
+        message: "Session invalide. Reconnecte-toi."
+      });
+    }
+
+    const targetMemberId = Number(req.body?.targetMemberId);
+
+    if (
+      !Number.isSafeInteger(targetMemberId) ||
+      targetMemberId <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifiant du membre invalide."
+      });
+    }
+
+    // Vérifier que l'expéditeur possède bien un profil familial.
+    const { data: sender, error: senderError } = await adminDb
+      .from("family_users")
+      .select("id, auth_user_id")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (senderError || !sender) {
+      return res.status(403).json({
+        success: false,
+        message: "Profil familial introuvable."
+      });
+    }
+
+    // Récupérer le membre ciblé.
+    const { data: target, error: targetError } = await adminDb
+      .from("family_users")
+      .select("id, name, auth_user_id, share_enabled")
+      .eq("id", targetMemberId)
+      .maybeSingle();
+
+    if (targetError || !target) {
+      return res.status(404).json({
+        success: false,
+        message: "Membre introuvable."
+      });
+    }
+
+    if (target.auth_user_id === user.id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tu ne peux pas t'envoyer une alerte à toi-même."
+      });
+    }
+
+    if (target.share_enabled !== false) {
+      return res.status(409).json({
+        success: false,
+        message: "Ce membre a déjà activé son partage GPS."
+      });
+    }
+
+    // Limiter les alertes répétées : une alerte par minute
+    // pour un même expéditeur et un même destinataire.
+    const oneMinuteAgo = new Date(
+      Date.now() - 60 * 1000
+    ).toISOString();
+
+    const { data: recentAlerts, error: recentError } = await adminDb
+      .from("family_alert_logs")
+      .select("id")
+      .eq("sender_user_id", user.id)
+      .eq("target_user_id", target.auth_user_id)
+      .gte("created_at", oneMinuteAgo)
+      .limit(1);
+
+    if (recentError) {
+      console.error("Erreur vérification alertes :", recentError);
+      return res.status(500).json({
+        success: false,
+        message: "Impossible de vérifier les dernières alertes."
+      });
+    }
+
+    if (recentAlerts?.length) {
+      return res.status(429).json({
+        success: false,
+        message: "Attends une minute avant de renvoyer une alerte."
+      });
+    }
+
+    // Récupérer les appareils sur lesquels le membre
+    // a accepté les notifications.
+    const { data: devices, error: devicesError } = await adminDb
+      .from("family_device_tokens")
+      .select("id, fcm_token")
+      .eq("auth_user_id", target.auth_user_id);
+
+    if (devicesError) {
+      console.error("Erreur récupération appareils :", devicesError);
+      return res.status(500).json({
+        success: false,
+        message: "Impossible de récupérer les appareils."
+      });
+    }
+
+    if (!devices?.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Ce membre n'a pas encore activé les notifications sur son appareil."
+      });
+    }
+
+    // Enregistrer l'alerte avant l'envoi.
+    const { error: logError } = await adminDb
+      .from("family_alert_logs")
+      .insert({
+        sender_user_id: user.id,
+        target_user_id: target.auth_user_id
+      });
+
+    if (logError) {
+      console.error("Erreur enregistrement alerte :", logError);
+      return res.status(500).json({
+        success: false,
+        message: "Impossible d'enregistrer l'alerte."
+      });
+    }
+
+    const messaging = getFirebaseMessaging();
+    const tokens = devices.map(device => device.fcm_token);
+
+    // Envoyer une notification générique : aucune position GPS
+    // ni coordonnée n'est transmise.
+    const result = await messaging.sendEachForMulticast({
+      tokens,
+      notification: {
+        title: "Famille GPS",
+        body: "Un proche souhaite te retrouver. Ouvre Famille GPS pour choisir si tu veux activer le partage de position."
+      },
+      data: {
+        type: "gps_sharing_request",
+        url: "/"
+      },
+      webpush: {
+        fcmOptions: {
+          link: "/"
+        },
+        notification: {
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+          tag: "famille-gps-alert",
+          requireInteraction: true
+        }
+      }
+    });
+
+    // Nettoyer les jetons qui ne sont plus valides.
+    const invalidTokens = [];
+
+    result.responses.forEach((response, index) => {
+      if (
+        !response.success &&
+        [
+          "messaging/registration-token-not-registered",
+          "messaging/invalid-registration-token"
+        ].includes(response.error?.code)
+      ) {
+        invalidTokens.push(devices[index].id);
+      }
+    });
+
+    if (invalidTokens.length) {
+      await adminDb
+        .from("family_device_tokens")
+        .delete()
+        .in("id", invalidTokens);
+    }
+
+    if (result.successCount === 0) {
+      return res.status(502).json({
+        success: false,
+        message: "La notification n'a pas pu être envoyée."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Alerte envoyée au membre.",
+      sent: result.successCount
+    });
+
+  } catch (error) {
+    console.error("Erreur send-alert :", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Une erreur est survenue lors de l'envoi de l'alerte."
+    });
+  }
+}
